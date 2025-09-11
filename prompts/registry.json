@@ -1,0 +1,11 @@
+{
+  "planning.exploration": "prompts/exploration_template.md",
+  "planning.intent_card": "prompts/intent_card_template.md",
+  "governance.assumptions": "prompts/assumptions_template.md",
+  "governance.changelog_entry": "prompts/changelog_entry_template.md",
+  "quality.test_plan": "prompts/test_plan_template.md",
+  "quality.validation_report": "prompts/validation_report_template.md",
+  "governance.audit_log": "prompts/audit_log_template.md",
+  "quality.report.manual_tests": "prompts/manual_test_report_template.md",
+  "quality.report.chaos_results": "prompts/chaos_results_report_template.md"
+}

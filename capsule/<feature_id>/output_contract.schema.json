@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:automatr:schema:capsule:<feature_id>:planning.output_contract:v1",
+  "title": "<TBD>",
+  "description": "<TBD>",
+  "version": "0.1.0",
+  "type": "object",
+  "required": [],
+  "properties": {},
+  "folder_rules": { "paths": [] },
+  "validation_path": "capsule/<feature_id>/reports/validation.json",
+  "idempotency": { "keys": [], "dedup_strategy": "<TBD>" },
+  "transaction_boundaries": { "unit": "<TBD>", "consistency_model": "<TBD>" },
+  "permitted_mutations": [ "<append-only|update|delete-limited>" ]
+}
+
