@@ -1,23 +1,23 @@
 # quality.test_plan Template
 
+You are generating scaffolding documents only. Ask unlimited follow‑ups when inference fails. Output the document body only. After each document, run validations; update schema/docs if new answers change constraints; then proceed to the next doc.
+
 Purpose
-- Guide a future LLM to create a comprehensive test plan covering scope, strategy, environments, data, detailed test cases, non-functional requirements, tooling, reporting, and traceability. Output document body is suitable for `capsule/<feature_id>/reports/test_plan-<YYYY-MM-DD>.md`.
+- Create a comprehensive test plan covering scope, strategy, environments, data, detailed test cases, non‑functional requirements, tooling, reporting, and traceability. Output document body only.
 
 Inputs Required
 - feature_id (kebab-case)
-- owner (team or human)
 - Intent/Exploration docs if available (to derive scope and criteria)
 - Environments, data availability, compliance constraints (if known)
 
 Follow-up Rule
-- Ask up to 3 clarifying questions. Record unresolved items in “UNKNOWN Summary”.
+- Ask unlimited follow-up questions. Record unresolved items in “UNKNOWN Summary”.
 
 Generation Instructions
 - Schema `$id` base: `urn:automatr:schema:capsule:<feature_id>:quality.test_plan:v<major>`
 - SemVer: use SemVer 2.0.0 for `version`.
 - Output document header fields:
-  - `feature_id: <feature-id>`
-  - `owner: <team-or-person>`
+  - `feature_id: <feature_id>`
   - `doc_type: quality.test_plan`
   - `schema_ref: urn:automatr:schema:capsule:<feature_id>:quality.test_plan:v1@<version>`
   - `version: <semver>`
@@ -42,7 +42,7 @@ Generation Instructions
   - `## Traceability Matrix`
     - Table: `Requirement | Test IDs | Coverage (%) | Notes`
   - `## UNKNOWN Summary`
-    - Table: `Field | Context | Owner | Next Step`
+    - Table: `ID | Question | Possible Effects | Recommended Actions | Next Step | Impact (High/Moderate/Low)`
 
 Output Requirement
 - Output only the document body. Append an HTML comment at the end logging size: `<!-- size: ~<words> words, ~<tokens> tokens -->`.
@@ -54,4 +54,3 @@ Acceptance Checklist
 - Traceability Matrix present or rationale if not applicable yet.
 - UNKNOWN Summary included if any open items.
 - Ends with size log comment.
-

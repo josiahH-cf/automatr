@@ -1,20 +1,21 @@
 # quality.report.manual_tests Template
 
+You are generating scaffolding documents only. Ask unlimited follow‑ups when inference fails. Output the document body only. After each document, run validations; update schema/docs if new answers change constraints; then proceed to the next doc.
+
 Purpose
-- Guide a future LLM to produce a manual test run report capturing executed tests, results, and links to logs. Output goes to `capsule/<feature_id>/reports/manual_tests.md`.
+- Produce a manual test run report capturing executed tests, results, and links to logs. Output is written to `/features/<feature_id>/reports/manual_tests.md` (or legacy `/capsule/<feature_id>/reports/manual_tests.md`).
 
 Inputs Required
-- feature_id (kebab-case), owner (team or human)
+- feature_id (kebab-case)
 - Reference to `quality.manual_tests` plan if available
 - Links or paths to log artifacts
 
 Follow-up Rule
-- Ask up to 3 clarifying questions; record unresolved items in an `UNKNOWN Summary` section.
+- Ask unlimited follow-up questions; record unresolved items in an `UNKNOWN Summary` section.
 
 Generation Instructions
 - Header fields (exact order):
-  - `feature_id: <feature-id>`
-  - `owner: <team-or-person>`
+  - `feature_id: <feature_id>`
   - `doc_type: quality.report.manual_tests`
   - `schema_ref: urn:automatr:schema:capsule:<feature_id>:quality.report.manual_tests:v1@<version>`
   - `version: <semver>`
@@ -22,6 +23,7 @@ Generation Instructions
 - Sections:
   - `## Test Runs`
   - `## Results Summary`
+  - If any failure occurred, add an item in UNKNOWN Summary with `Impact = High` and link to evidence.
   - `## UNKNOWN Summary`
 
 Output Requirement
@@ -31,4 +33,3 @@ Acceptance Checklist
 - Header fields valid (feature_id regex, SemVer, correct doc_type and schema_ref URN).
 - Both sections present and non-empty (or explicitly state None).
 - UNKNOWN Summary included when open items remain.
-

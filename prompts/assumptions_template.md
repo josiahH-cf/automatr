@@ -1,15 +1,16 @@
 # governance.assumptions Template
 
+You are generating scaffolding documents only. Ask unlimited follow‑ups when inference fails. Output the document body only. After each document, run validations; update schema/docs if new answers change constraints; then proceed to the next doc.
+
 Purpose
-- Guide a future LLM to populate the capsule’s assumptions and unknowns document. The output must overwrite or update `capsule/<feature_id>/assumptions.md` using the exact header and table schemas below.
+- Populate the capsule’s assumptions and unknowns document. Output must use the exact header and table schemas below.
 
 Inputs Required
 - feature_id (kebab-case)
-- owner (team or human)
 - Any known assumptions, constraints, or open questions from planning documents
 
 Follow-up Rule
-- Ask up to 3 clarifying questions. Record unresolved items in the Unknowns table and in the “UNKNOWN Summary”.
+- Ask unlimited follow-up questions. Record unresolved items in the Unknowns table and in the “UNKNOWN Summary”.
 
 Generation Instructions
 - Schema `$id` base: `urn:automatr:schema:capsule:<feature_id>:governance.assumptions:v<major>`
@@ -17,8 +18,7 @@ Generation Instructions
 - Output document must start with the exact header and tables:
 
 ```
-feature_id: <feature-id>
-owner: <team-or-person>
+feature_id: <feature_id>
 doc_type: governance.assumptions
 schema_ref: urn:automatr:schema:capsule:<feature_id>:governance.assumptions:v1@<version>
 version: <semver>
@@ -27,8 +27,8 @@ updated: <YYYY-MM-DD>
 ## Assumptions
 ID | Statement | Confidence | Source/Justification
 
-## Unknowns
-ID | Question | Impact | Owner | Next Step | Due
+## UNKNOWN Summary
+ID | Question | Possible Effects | Recommended Actions | Next Step | Impact (High/Moderate/Low)
 ```
 
 Output Requirement
@@ -40,3 +40,5 @@ Acceptance Checklist
 - Unknowns captured as rows when present.
 - Size log comment present.
 
+Footer Pointer
+- Append one-line footer: `Next doc_type: governance.evaluation_and_tripwires`.

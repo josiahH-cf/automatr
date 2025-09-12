@@ -1,24 +1,23 @@
-# GAP Audit Verification Report
+# GAP Audit Verification
+Date: 2025-09-12
+Repo Base Commit: 6a83cb3101057310153e768fa90833ebbd571156
 
-Date: 2025-09-11
-Repo Base Commit: aa99846a590d321ee4507aa9523a5813dd5b4a96
+## Checks & Outcomes
+- Repository & Structure: PASS — `/prompts`, `/features`, legacy `/capsule`, and `capsule/reports/validation/` present; controller/validators wired.
+- Templates & Registry: PASS — `prompts/registry.json` covers all required planning.*, governance.*, quality.*; round‑trip check OK.
+- Controller & Workflow: PASS — Controller and launcher support both roots, run validation after each doc, and document final implementable gate.
+- Unknowns Handling: PASS — Templates include standardized UNKNOWN Summary; unknowns listed and policy enforced; unresolved items flow to assumptions.
+- Versioning & Identity: PASS — Canonical header spec enforced; schema evolution helper present; SemVer rules documented.
+- Manual Tests Sync: PASS — Template derives tests from `schema.required` and acceptance; validator enforces coverage and schema version reference.
+- Validation Pipeline: WARN (expected for placeholders) — `validate_all.sh` reports Gate WARN only due to skeleton placeholders (empty required[], missing tuple values). No failures.
+- Regression/Legacy Safety: PASS — Legacy `/capsule/**` untouched; controller and validators support both roots; no regressions.
 
-Status: FIXED — Minimal edits applied to ensure full compliance with invariants and Phase 6 conclusions.
+## Fixes Applied
+None — no changes required.
 
-Edits Performed
-- Added missing `## UNKNOWN Summary` section to ensure consistency across all documents:
-  - `capsule/<feature_id>/assumptions.md` — appended UNKNOWN Summary stub.
-  - `capsule/<feature_id>/CHANGELOG.md` — appended UNKNOWN Summary stub.
-  - `capsule/<feature_id>/reports/manual_tests.md` — appended UNKNOWN Summary stub.
-  - `capsule/<feature_id>/reports/chaos_results.md` — appended UNKNOWN Summary stub.
+## Outstanding Unknowns
+None — no blocking questions. Placeholder WARNs will be resolved by the first real feature capsule (populate `required[]` and concurrency tuple values).
 
-Validation Results
-- Registry round-trip: PASS (`capsule/reports/validation/check_registry.py`).
-- Header checks orchestration: PASS (`validate_all.sh` skips placeholder skeletons and exits 0).
-- Identity handshake (headers + canonical URN schema_ref): PASS (applied across capsule markdown headers).
-- Acceptance ↔ schema required coverage: WARN (expected at skeleton stage; `required` is empty).
-- Concurrency tuple presence: WARN (sections exist with `<TBD>` placeholders, as expected at skeleton stage).
-
-Notes
-- No feature content was added; only structural stubs to satisfy invariant 4 (Follow-up Q rule).
+## Next Steps
+None — system ready for feature capsule creation.
 

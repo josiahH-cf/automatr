@@ -1,5 +1,7 @@
 # governance.changelog_entry Template
 
+You are generating scaffolding documents only. Ask unlimited follow‑ups when inference fails. Output the document body only. After each document, run validations; update schema/docs if new answers change constraints; then proceed to the next doc.
+
 Purpose
 - Guide a future LLM to generate a single CHANGELOG entry line for `capsule/<feature_id>/CHANGELOG.md` that complies with SemVer and the capsule’s conventions.
 
@@ -10,7 +12,7 @@ Inputs Required
 - Change type (Added/Changed/Fixed/Removed/Deprecated/Security/Docs/etc.)
 
 Follow-up Rule
-- Ask up to 3 clarifying questions. If unresolved, include a brief note in parentheses at the end of the line and add an item to UNKNOWN Summary (in a separate report if required).
+- Ask unlimited follow-up questions. If unresolved, include a brief note in parentheses at the end of the line and add an item to UNKNOWN Summary (in a separate report if required).
 
 Generation Instructions
 - Schema `$id` base: `urn:automatr:schema:capsule:<feature_id>:governance.changelog_entry:v<major>`
@@ -31,4 +33,3 @@ Acceptance Checklist
 - Date in ISO format `YYYY-MM-DD`.
 - Version is valid SemVer and consistent with impact.
 - Clear change type and concise note.
-

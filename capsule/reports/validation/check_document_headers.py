@@ -36,7 +36,7 @@ def main():
         return 2
 
     header = parse_header(path)
-    required = ["feature_id", "owner", "doc_type", "schema_ref", "version", "updated"]
+    required = ["feature_id", "doc_type", "schema_ref", "version", "updated"]
     missing = [k for k in required if k not in header]
     issues = 0
     if missing:
@@ -81,6 +81,23 @@ def main():
             print(f"ERROR: schema_ref version mismatch: {m.group('ver')} != {ver}", file=sys.stderr)
             issues += 1
 
+    # Optional: enforce header order for the first required lines
+    try:
+        lines = []
+        with path.open(encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    lines.append(line.strip())
+                if len(lines) == len(required):
+                    break
+        keys_in_order = [l.split(":", 1)[0].strip() for l in lines]
+        expected_order = required
+        if keys_in_order != expected_order:
+            print(f"ERROR: header order invalid. Found {keys_in_order}, expected {expected_order}", file=sys.stderr)
+            issues += 1
+    except Exception:
+        pass
+
     if issues == 0:
         print(f"OK: {path} header is valid")
         return 0
@@ -88,4 +105,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

@@ -46,3 +46,15 @@ Path: capsule/reports/gap_audit.md
 **Next Action**
 - Proceed to Phase 5 end‑to‑end feature workflow test: generate a real capsule (non‑placeholder feature_id), produce documents via templates, and run `capsule/reports/validation/validate_all.sh` to validate headers and schema_ref URNs on concrete artifacts.
 
+## UNKNOWN Summary
+ID | Question | Possible Effects | Recommended Actions | Next Step | Impact (High/Moderate/Low)
+U-001 | What are the canonical metrics and units for SLOs? | Inconsistent observability targets; audits harder to compare | Define metrics taxonomy and unit conventions | Update `quality.observability_slos` during first capsule | Moderate
+U-002 | Which chaos tools and schedule are approved? | Gaps in resilience coverage and evidence | Select tooling and cadence with QA/SRE | Update `quality.runtime_concurrency_tests` and reports | Moderate
+
+## Validation Loop (Phase-5 Gate)
+- Implemented per-document validation with gating and step logging.
+- Script: `capsule/reports/validation/validate_all.sh`
+  - Outputs final `GATE: PASS|WARN|FAIL` and STOP/NEED messages on FAIL.
+  - Appends to `/features/<feature_id>/reports/creation_run.md` when `FEATURE_ID` and `DOC_PATH` are provided.
+  - Produces `/features/<feature_id>/reports/validation_summary.md` per run.
+- Hard size threshold requires explicit approval; proceed by setting `VALIDATION_ALLOW_HARD_SIZE=1` and re-running validator.
