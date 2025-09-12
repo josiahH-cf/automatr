@@ -19,5 +19,6 @@
   "quality.observability_slos": "prompts/observability_slos_template.md",
   "quality.runtime_concurrency_tests": "prompts/runtime_concurrency_tests_template.md",
   "governance.evaluation_and_tripwires": "prompts/evaluation_and_tripwires_template.md",
-  "quality.manual_tests": "prompts/manual_tests_template.md"
+  "quality.manual_tests": "prompts/manual_tests_template.md",
+  "governance.final_bundle_verifier": "prompts/final_bundle_verifier.md"
 }

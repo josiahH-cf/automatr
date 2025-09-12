@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:automatr:schema:tools.final_bundle:bundle_manifest:v1",
+  "title": "Final Feature Bundle Manifest",
+  "type": "object",
+  "required": [
+    "feature_id", "schema_ref", "schema_semver", "repo_commit", "created_utc",
+    "source_paths", "bundle_paths", "hashes", "gates", "approvals", "final_doc"
+  ],
+  "properties": {
+    "feature_id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$" },
+    "schema_ref": { "type": "string" },
+    "schema_semver": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+].*)?$" },
+    "repo_commit": { "type": "string" },
+    "created_utc": { "type": "string", "format": "date-time" },
+    "source_paths": { "type": "array", "items": { "type": "string" } },
+    "bundle_paths": { "type": "array", "items": { "type": "string" } },
+    "hashes": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+    },
+    "gates": {
+      "type": "object",
+      "required": [
+        "identity", "acceptance_to_required", "concurrency_tuple", "leakage_forbidden",
+        "size_policy", "unknowns_policy", "nothing_breaks"
+      ],
+      "properties": {
+        "identity": { "enum": ["PASS", "WARN", "FAIL"] },
+        "acceptance_to_required": { "enum": ["PASS", "WARN", "FAIL"] },
+        "concurrency_tuple": { "enum": ["PASS", "WARN", "FAIL"] },
+        "leakage_forbidden": { "enum": ["PASS", "WARN", "FAIL"] },
+        "size_policy": { "enum": ["PASS", "WARN", "FAIL"] },
+        "unknowns_policy": { "enum": ["PASS", "WARN", "FAIL"] },
+        "nothing_breaks": { "enum": ["PASS", "WARN", "FAIL"] }
+      }
+    },
+    "approvals": {
+      "type": "object",
+      "required": ["allow_gt_1600_tokens"],
+      "properties": { "allow_gt_1600_tokens": { "type": "boolean" } }
+    },
+    "unknowns_summary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["doc", "row_id", "question", "possible_effects", "recommended_actions", "next_step", "impact"],
+        "properties": {
+          "doc": { "type": "string" },
+          "row_id": { "type": "string" },
+          "question": { "type": "string" },
+          "possible_effects": { "type": "string" },
+          "recommended_actions": { "type": "string" },
+          "next_step": { "type": "string" },
+          "impact": { "enum": ["High", "Moderate", "Low"] }
+        }
+      }
+    },
+    "final_doc": { "type": "string" },
+    "notes": { "type": "string" }
+  }
+}
+
