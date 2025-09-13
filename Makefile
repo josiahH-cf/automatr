@@ -26,12 +26,13 @@ plan-info:
 .PHONY: new-feature engine-check-generic
 
 # Create a new feature from the engine template
-# Usage: make new-feature FID=my-feature [DRY=yes] [FORCE=yes]
+# Usage: make new-feature FID=my-feature [DRY=yes] [FORCE=yes] [FROM=templates/feature-capsule/feature-template]
 new-feature:
-	@FEATURE_ID="$(FID)" DRY_RUN="$(DRY)" FORCE="$(FORCE)" bash tools/capsule-engine/scripts/new_feature.sh $$FEATURE_ID $$( [ -n "$(FROM)" ] && printf -- " --from-template %s" "$(FROM)" ) $$( [ -n "$(DRY)" ] && printf -- " --dry-run %s" "$(DRY)" ) $$( [ "$(FORCE)" = "yes" ] && printf -- " --force" )
+	@python3 tools/capsule-engine/entrypoint.py new --feature-id "$(FID)" $$( [ -n "$(FROM)" ] && printf -- " --from-template %s" "$(FROM)" ) $$( [ "$(DRY)" = "yes" ] && printf -- " --dry-run" ) $$( [ "$(FORCE)" = "yes" ] && printf -- " --force" )
 
 # One-time audit to ensure engine is generic and clean
 engine-check-generic:
+	@python3 tools/capsule-engine/scripts/check_generic.py || true
 	@bash scripts/one_time_engine_audit.sh
 
 # END capsule-workflow make

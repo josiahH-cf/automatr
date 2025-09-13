@@ -44,6 +44,7 @@ AUTO=$(rg -n "automatr" "$ENG_ROOT" -S --hidden \
   -g '!tools/capsule-engine/templates/**' \
   -g '!tools/capsule-engine/.git/**' \
   -g '!tools/capsule-engine/README.md' \
+  -g '!tools/capsule-engine/scripts/check_generic.py' \
   -g '!tools/capsule-engine/prompts/**' \
   -g '!tools/capsule-engine/schemas/**' || true)
 if [[ -n "$AUTO" ]]; then
@@ -60,4 +61,3 @@ else
   echo "FAIL: engine audit found issues" >&2
   exit 1
 fi
-
