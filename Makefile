@@ -77,7 +77,7 @@ watch-validate:
 	  N=$$(find capsule tools/capsule-engine -type f -newermt "@$$TS" | wc -l); \
 	  if [ "$$N" -gt 0 ]; then \
 	    TS=$$(date +%s); \
-	    FEATURE_ID="$(FID)" bash capsule/reports/validation/validate_all.sh >> planning/reports/auto_watch.log 2>&1 || true; \
+	    FEATURE_ID="$(FID)" bash tools/capsule-engine/capsule/reports/validation/validate_all.sh >> planning/reports/auto_watch.log 2>&1 || true; \
 	    date -Is >> planning/reports/auto_watch.log; \
 	    echo "Validated (FID=$$(echo $(FID)))" >> planning/reports/auto_watch.log; \
 	    echo "Validation run appended to planning/reports/auto_watch.log"; \
@@ -104,7 +104,7 @@ e2e-feature:
 	  allow=$$(echo $$ans4 | grep -qi '^y' && echo yes || echo no); \
 	  bash tools/capsule-engine/tools/final_bundle/verify_and_package.sh feature_id=$(FID) allow_gt_1600_tokens=$$allow; \
 	  read -r -p "LLM> Create mock OS tarballs from latest bundle? [y/N] " ans5; ans5=$${ans5:-N}; \
-	  case $$ans5 in [Yy]*) $(MAKE) pack-demo;; esac; \
+	  case $$ans5 in [Yy*) $(MAKE) pack-demo;; esac; \
 	fi; \
 	echo "\nLLM> e2e complete for $(FID)."
 
@@ -114,3 +114,15 @@ e2e-auto:
 	@if [ -z "$(FID)" ]; then echo "Usage: make e2e-auto FID=<feature-id> [SEED=path] [ALLOW=yes|no]" >&2; exit 2; fi; \
 	python3 tools/capsule-engine/entrypoint.py auto --feature-id "$(FID)" $$( [ -n "$(FROM)" ] && printf -- " --from-template %s" "$(FROM)" ) $$( [ -n "$(SEED)" ] && printf -- " --seed %s" "$(SEED)" ) $$( [ "$(ALLOW)" = "yes" ] && printf -- " --allow-gt-1600 yes" || printf -- " --allow-gt-1600 no" ) $$( [ "$(FORCE)" = "yes" ] && printf -- " --force" )
 # END capsule-helpers make
+
+# BEGIN docs-iteration make
+.PHONY: feature-docs
+feature-docs:
+	@bash -lc 'set -e; \
+	  if [ -n "$(FID)" ]; then FID="$(FID)"; else read -p "Feature ID: " FID_IN; FID="$$FID_IN"; fi; \
+	  if [ -z "$$FID" ]; then echo "Missing FID" >&2; exit 2; fi; \
+	  echo "----- Authoring Prompt (copy below) -----"; \
+	  sed "s/{{FEATURE_ID}}/$$FID/g" automatr-capsule/prompts/authoring_prompt.md; \
+	  echo ""; echo "----- Starting Docs Loop -----"; \
+	  python3 tools/capsule-engine/scripts/docs_loop.py --feature-id "$$FID" --batch-size "${BATCH:-6}" --pack "${PACK:-yes}" --allow-gt-1600 "${ALLOW:-no}"'
+# END docs-iteration make
