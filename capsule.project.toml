@@ -1,0 +1,9 @@
+[project]
+namespace = "automatr"
+
+[paths]
+features = "automatr-capsule/features"
+capsule = "automatr-capsule/capsule"
+final_docs = "automatr-capsule/final_feature_documents"
+planning = "automatr-capsule/planning"
+

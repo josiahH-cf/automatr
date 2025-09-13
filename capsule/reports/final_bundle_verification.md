@@ -1,1 +1,0 @@
-2025-09-12T00:00:00Z | feature_id: (missing) | commit: (unknown) | gates: identity=N/A, acceptance_to_required=N/A, concurrency_tuple=N/A, leakage_forbidden=N/A, size_policy=N/A, unknowns_policy=N/A, nothing_breaks=N/A | bundle: (none) | rationale: STOP — required input `feature_id` not provided; cannot locate /features/<feature_id>/ for verification/bundling.
