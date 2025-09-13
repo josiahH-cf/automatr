@@ -62,6 +62,28 @@ for e in "${entries[@]}"; do
   to_delete+=("$e")
 done
 
+# Remove placeholder template directories inside app capsule/features
+placeholder_candidates=()
+while IFS= read -r -d '' d; do
+  placeholder_candidates+=("$d")
+done < <(find automatr-capsule -type d \( -name '<feature_id>' -o -name '{{FEATURE_ID}}' \) -print0 2>/dev/null || true)
+
+if (( ${#placeholder_candidates[@]} > 0 )); then
+  echo "Found placeholder directories (will remove on confirm):"
+  for d in "${placeholder_candidates[@]}"; do
+    echo " - $d"
+  done
+  to_delete+=("${placeholder_candidates[@]}")
+fi
+
+dup_packager=()
+if [[ -f tools/capsule-engine/tools/verify_and_package.sh ]]; then dup_packager+=("tools/capsule-engine/tools/verify_and_package.sh"); fi
+if [[ -f tools/capsule-engine/tools/verify_and_package.py ]]; then dup_packager+=("tools/capsule-engine/tools/verify_and_package.py"); fi
+if (( ${#dup_packager[@]} > 0 )); then
+  echo "WARNING: duplicate packager scripts detected outside final_bundle (submodule)." >&2
+  for f in "${dup_packager[@]}"; do echo " - $f" >&2; done
+fi
+
 if (( ${#to_delete[@]} == 0 )); then
   echo "Nothing to delete. Repo already clean."
   exit 0
@@ -91,4 +113,3 @@ for e in "${to_delete[@]}"; do
 done
 
 echo "Done."
-

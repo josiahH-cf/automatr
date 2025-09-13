@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:automatr:schema:capsule:hello-world:acceptance.output_contract:v1@0.1.0",
+  "title": "Output Contract for hello-world",
+  "description": "Schema for outputs produced by hello-world capsule.",
+  "type": "object",
+  "version": "0.1.0",
+  "properties": {},
+  "required": []
+}
+
