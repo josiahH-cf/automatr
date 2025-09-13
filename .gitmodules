@@ -1,0 +1,3 @@
+[submodule "tools/capsule-engine"]
+	path = tools/capsule-engine
+	url = git@github.com:josiahH-cf/feature-capsule-kit.git
