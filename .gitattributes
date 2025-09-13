@@ -1,0 +1,3 @@
+# BEGIN portable-engine linguist
+tools/capsule-engine/** linguist-vendored
+# END portable-engine linguist

@@ -1,0 +1,5 @@
+# BEGIN portable-engine ignore
+planning/features/**
+planning/final_feature_documents/**
+!planning/.gitkeep
+# END portable-engine ignore

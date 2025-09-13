@@ -1,3 +1,0 @@
-# Add one regex per line (case-insensitive) to block in generated documents
-# Example:
-# ^DO NOT COPY THIS PROMPT$
