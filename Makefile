@@ -25,10 +25,15 @@ plan-info:
 # BEGIN capsule-workflow make
 .PHONY: new-feature engine-check-generic
 
-# Create a new feature from the engine template
-# Usage: make new-feature FID=my-feature [DRY=yes] [FORCE=yes] [FROM=templates/feature-capsule/feature-template]
+# Create a new feature via interactive wizard by default
+# Usage: make new-feature [FID=my-feature FROM=... DRY=yes FORCE=yes] (non-interactive when FID is provided)
 new-feature:
-	@python3 tools/capsule-engine/entrypoint.py new --feature-id "$(FID)" $$( [ -n "$(FROM)" ] && printf -- " --from-template %s" "$(FROM)" ) $$( [ "$(DRY)" = "yes" ] && printf -- " --dry-run" ) $$( [ "$(FORCE)" = "yes" ] && printf -- " --force" )
+	@if [ -n "$(FID)" ]; then \
+	  echo "Non-interactive: creating new feature '$(FID)'"; \
+	  python3 tools/capsule-engine/entrypoint.py new --feature-id "$(FID)" $$( [ -n "$(FROM)" ] && printf -- " --from-template %s" "$(FROM)" ) $$( [ "$(DRY)" = "yes" ] && printf -- " --dry-run" ) $$( [ "$(FORCE)" = "yes" ] && printf -- " --force" ); \
+	else \
+	  python3 tools/capsule-engine/entrypoint.py wizard; \
+	fi
 
 # One-time audit to ensure engine is generic and clean
 engine-check-generic:
