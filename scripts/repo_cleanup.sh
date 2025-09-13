@@ -76,6 +76,21 @@ if (( ${#placeholder_candidates[@]} > 0 )); then
   to_delete+=("${placeholder_candidates[@]}")
 fi
 
+# Remove validation temp artifacts if present
+val_tmp="tools/capsule-engine/capsule/reports/validation/.run_tmp"
+if [[ -d "$val_tmp" ]]; then
+  echo "Found validation temp dir: $val_tmp (will remove on confirm)"
+  to_delete+=("$val_tmp")
+fi
+
+# Remove redundant planning mirrors (top-level symlinks already expose these)
+for p in automatr-capsule/planning/features automatr-capsule/planning/final_feature_documents; do
+  if [[ -d "$p" ]]; then
+    echo "Found redundant planning mirror: $p (will remove on confirm)"
+    to_delete+=("$p")
+  fi
+done
+
 dup_packager=()
 if [[ -f tools/capsule-engine/tools/verify_and_package.sh ]]; then dup_packager+=("tools/capsule-engine/tools/verify_and_package.sh"); fi
 if [[ -f tools/capsule-engine/tools/verify_and_package.py ]]; then dup_packager+=("tools/capsule-engine/tools/verify_and_package.py"); fi

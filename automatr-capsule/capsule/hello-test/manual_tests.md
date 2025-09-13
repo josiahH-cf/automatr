@@ -1,7 +1,7 @@
 # Manual Tests
 
 Schema Reference
-Contract: urn:automatr:schema:capsule:hello-world:acceptance.output_contract:v1@0.1.0
+Contract: urn:automatr:schema:capsule:hello-test:acceptance.output_contract:v1@0.1.0
 
 ## Tests
 

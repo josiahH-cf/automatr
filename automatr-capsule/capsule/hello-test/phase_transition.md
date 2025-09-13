@@ -1,6 +1,6 @@
-feature_id: hello-world
+feature_id: hello-test
 doc_type: governance.phase_transition
-schema_ref: urn:automatr:schema:capsule:hello-world:governance.phase_transition:v1@0.1.0
+schema_ref: urn:automatr:schema:capsule:hello-test:governance.phase_transition:v1@0.1.0
 version: 0.1.0
 updated: 2025-09-13
 
