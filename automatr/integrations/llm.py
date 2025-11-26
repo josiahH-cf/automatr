@@ -104,11 +104,14 @@ class LLMClient:
             
         except requests.ConnectionError:
             raise ConnectionError(
-                f"Could not connect to LLM server at {self.base_url}. "
-                "Is the server running?"
+                f"Cannot connect to LLM server at {self.base_url}.\n\n"
+                "Use LLM → Start Server to start it."
             )
         except requests.Timeout:
-            raise RuntimeError("Request timed out. Try a shorter prompt or increase timeout.")
+            raise RuntimeError(
+                "Request timed out.\n\n"
+                "The model may be loading or the prompt is too long. Try again."
+            )
         except requests.RequestException as e:
             raise RuntimeError(f"Generation failed: {e}")
     
@@ -273,18 +276,29 @@ class LLMServerManager:
         binary = self.find_server_binary()
         if not binary:
             return False, (
-                "llama-server not found. Please build llama.cpp or set "
-                "the server_binary path in configuration."
+                "llama-server binary not found.\n\n"
+                "To fix:\n"
+                "1. Run ./install.sh to build llama.cpp, or\n"
+                "2. Set 'server_binary' in ~/.config/automatr/config.json"
             )
         
         # Determine model
         model = model_path or self.config.model_path
         if not model:
-            return False, "No model configured. Please set model_path in configuration."
+            return False, (
+                "No model configured.\n\n"
+                "To fix:\n"
+                "1. Place .gguf model files in ~/models/\n"
+                "2. Use LLM → Select Model in the menu, or\n"
+                "3. Set 'model_path' in ~/.config/automatr/config.json"
+            )
         
         model_file = Path(model).expanduser()
         if not model_file.exists():
-            return False, f"Model file not found: {model_file}"
+            return False, (
+                f"Model file not found:\n{model_file}\n\n"
+                "Use LLM → Select Model to choose an available model."
+            )
         
         # Build command
         cmd = [
