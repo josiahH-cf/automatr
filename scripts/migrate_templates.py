@@ -65,10 +65,19 @@ def migrate_directory(source_dir: Path, dest_dir: Path):
     dest_dir.mkdir(parents=True, exist_ok=True)
     
     count = 0
-    for old_file in source_dir.glob("*.json"):
+    # Use rglob to recursively find all JSON files
+    for old_file in source_dir.rglob("*.json"):
+        # Skip settings and globals files
+        if old_file.name in ("settings.json", "globals.json"):
+            continue
+            
         try:
             with open(old_file, "r", encoding="utf-8") as f:
                 old_data = json.load(f)
+            
+            # Skip files that don't look like templates
+            if "template" not in old_data and "title" not in old_data:
+                continue
             
             new_data = migrate_template(old_data)
             
@@ -76,6 +85,12 @@ def migrate_directory(source_dir: Path, dest_dir: Path):
             safe_name = new_data["name"].lower().replace(" ", "_")
             safe_name = "".join(c for c in safe_name if c.isalnum() or c == "_")
             new_file = dest_dir / f"{safe_name}.json"
+            
+            # Handle duplicate names
+            counter = 1
+            while new_file.exists():
+                new_file = dest_dir / f"{safe_name}_{counter}.json"
+                counter += 1
             
             with open(new_file, "w", encoding="utf-8") as f:
                 json.dump(new_data, f, indent=2)
