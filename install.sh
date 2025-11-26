@@ -24,8 +24,9 @@ NC='\033[0m' # No Color
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="${SCRIPT_DIR}/.venv"
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/automatr"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/automatr"
-LLAMA_CPP_DIR="${HOME}/llama.cpp"
+LLAMA_CPP_DIR="${DATA_DIR}/llama.cpp"
 
 # Logging functions
 log_info() {
@@ -146,10 +147,13 @@ build_llama_cpp() {
         return
     fi
     
+    # Ensure data directory exists
+    mkdir -p "$DATA_DIR"
+    
     # Clone if not present
     if [[ ! -d "$LLAMA_CPP_DIR" ]]; then
-        log_info "Cloning llama.cpp..."
-        git clone https://github.com/ggerganov/llama.cpp.git "$LLAMA_CPP_DIR"
+        log_info "Cloning llama.cpp to $LLAMA_CPP_DIR..."
+        git clone --depth 1 https://github.com/ggerganov/llama.cpp.git "$LLAMA_CPP_DIR"
     fi
     
     cd "$LLAMA_CPP_DIR"
@@ -182,6 +186,7 @@ setup_config() {
     log_info "Setting up configuration..."
     
     mkdir -p "$CONFIG_DIR/templates"
+    mkdir -p "$DATA_DIR"
     
     # Copy example templates if they don't exist
     if [[ -d "$SCRIPT_DIR/templates" ]]; then
@@ -206,7 +211,7 @@ setup_config() {
     "server_port": 8080,
     "context_size": 4096,
     "gpu_layers": 0,
-    "server_binary": "$LLAMA_CPP_DIR/build/bin/llama-server"
+    "server_binary": ""
   },
   "ui": {
     "theme": "dark",
@@ -359,6 +364,7 @@ print_summary() {
     echo ""
     echo -e "  ${BLUE}Virtual environment:${NC} $VENV_DIR"
     echo -e "  ${BLUE}Configuration:${NC}       $CONFIG_DIR"
+    echo -e "  ${BLUE}Data directory:${NC}      $DATA_DIR"
     echo -e "  ${BLUE}llama.cpp:${NC}           $LLAMA_CPP_DIR"
     echo ""
     echo -e "  ${YELLOW}To start Automatr:${NC}"

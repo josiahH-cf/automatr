@@ -174,26 +174,35 @@ class LLMServerManager:
         """Find the llama-server binary.
         
         Searches in order:
-        1. Configured path
-        2. PATH environment
-        3. Common locations
+        1. Configured path (config.llm.server_binary)
+        2. Automatr data directory (~/.local/share/automatr/llama.cpp/build/bin/)
+        3. PATH environment
+        4. Legacy locations (~/llama.cpp/build/bin/)
         
         Returns:
             Path to binary, or None if not found.
         """
+        binary_name = "llama-server" if os.name != "nt" else "llama-server.exe"
+        
         # 1. Check configured path
         if self.config.server_binary:
             path = Path(self.config.server_binary).expanduser()
             if path.exists() and os.access(path, os.X_OK):
                 return path
         
-        # 2. Check PATH
-        binary_name = "llama-server" if os.name != "nt" else "llama-server.exe"
+        # 2. Check Automatr standard data directory
+        automatr_llama = (
+            Path.home() / ".local" / "share" / "automatr" / "llama.cpp" / "build" / "bin" / binary_name
+        )
+        if automatr_llama.exists() and os.access(automatr_llama, os.X_OK):
+            return automatr_llama
+        
+        # 3. Check PATH
         path_binary = shutil.which(binary_name)
         if path_binary:
             return Path(path_binary)
         
-        # 3. Check common locations
+        # 4. Check legacy/common locations
         candidates = [
             Path.home() / "llama.cpp" / "build" / "bin" / binary_name,
             Path.home() / ".local" / "bin" / binary_name,

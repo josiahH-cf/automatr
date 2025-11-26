@@ -103,6 +103,28 @@ Each template file is a single JSON object:
 - Robust error handling: health checks, timeouts, clear messages.
 - Model discovery: User-configured path, with recursive search for `.gguf` files.
 
+### llama.cpp Location Strategy
+
+**Principle:** Keep the automatr repository clean. No submodules, no embedded copies.
+
+**Standard Location:** `~/.local/share/automatr/llama.cpp`
+
+- The installer clones and builds llama.cpp to this location.
+- Configuration stores the path to the built binary.
+- No symlinks in the project directory.
+- User can override via `config.json` if they have an existing installation.
+
+**Binary Discovery Order:**
+1. `config.llm.server_binary` (explicit user config)
+2. `~/.local/share/automatr/llama.cpp/build/bin/llama-server`
+3. `$PATH` lookup (`which llama-server`)
+4. Legacy fallback: `~/llama.cpp/build/bin/llama-server`
+
+**Why not symlinks?**
+- Symlinks add complexity and can break (stale links, permissions).
+- A well-defined data directory is cleaner and more portable.
+- Configuration already handles custom paths.
+
 ---
 
 ## Espanso Integration
