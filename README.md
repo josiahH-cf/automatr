@@ -1,65 +1,31 @@
 # Automatr
 
-Minimal prompt automation tool with local LLM integration.
+Prompt templates + local LLM in one GUI. No cloud, no API keys.
 
-## Features
-
-- **Template-driven prompts** — JSON-based templates with variables
-- **Local LLM** — Integrates with llama.cpp server
-- **Espanso triggers** — Map templates to text expansion triggers
-- **Global hotkey** — AutoHotkey script for Windows/WSL2
-- **PyQt6 GUI** — Clean, dark-themed interface
-
-## Quick Start
+## Install & Run
 
 ```bash
-# Install
-./install.sh
-
-# Run
-automatr
+./install.sh    # builds llama.cpp, sets up Python venv
+automatr        # launch GUI
 ```
 
-## Usage
+**Requirements:** Linux/WSL2, Python 3.10+, a `.gguf` model in `~/models/`
 
-```bash
-# Launch GUI
-automatr
+## What It Does
 
-# Sync templates to Espanso
-automatr --sync
+1. **Pick a template** — reusable prompts with `{{variables}}`
+2. **Fill in the blanks** — GUI form for each variable
+3. **Generate** — local llama.cpp server, GPU-accelerated
+4. **Copy result** — paste anywhere
 
-# Show version
-automatr --version
+Templates sync to [Espanso](https://espanso.org) for system-wide text expansion.
+
+## Files
+
 ```
-
-## Configuration
-
-Configuration is stored in `~/.config/automatr/config.json`:
-
-```json
-{
-  "model_path": "~/models/llama-3.2-3b.gguf",
-  "server_port": 8080,
-  "theme": "dark"
-}
-```
-
-## Templates
-
-Templates are stored in `~/.config/automatr/templates/`:
-
-```json
-{
-  "name": "Code Review",
-  "description": "Ask an LLM to review code",
-  "trigger": ":review",
-  "variables": [
-    { "name": "language", "label": "Language", "default": "Python" },
-    { "name": "code", "label": "Code", "multiline": true }
-  ],
-  "content": "Review this {{language}} code:\n\n{{code}}"
-}
+~/.config/automatr/
+├── config.json      # model path, port, theme
+└── templates/       # your prompt templates (JSON)
 ```
 
 ## License
