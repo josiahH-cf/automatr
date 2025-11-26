@@ -1,0 +1,200 @@
+"""Configuration management for Automatr.
+
+Handles loading/saving app configuration from a single JSON file.
+"""
+
+import json
+from dataclasses import dataclass, field, asdict
+from pathlib import Path
+from typing import Optional
+
+
+def get_config_dir() -> Path:
+    """Get the configuration directory path.
+    
+    Uses XDG_CONFIG_HOME if set, otherwise ~/.config/automatr.
+    """
+    import os
+
+    xdg_config = os.environ.get("XDG_CONFIG_HOME")
+    if xdg_config:
+        base = Path(xdg_config)
+    else:
+        base = Path.home() / ".config"
+    
+    config_dir = base / "automatr"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    return config_dir
+
+
+def get_config_path() -> Path:
+    """Get the configuration file path."""
+    return get_config_dir() / "config.json"
+
+
+def get_templates_dir() -> Path:
+    """Get the templates directory path."""
+    templates_dir = get_config_dir() / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    return templates_dir
+
+
+@dataclass
+class LLMConfig:
+    """Configuration for the local LLM server."""
+    
+    model_path: str = ""
+    model_dir: str = ""
+    server_port: int = 8080
+    context_size: int = 4096
+    gpu_layers: int = 0
+    server_binary: str = ""  # Auto-detect if empty
+
+
+@dataclass
+class UIConfig:
+    """Configuration for the UI."""
+    
+    theme: str = "dark"
+    window_width: int = 900
+    window_height: int = 700
+    font_size: int = 11
+
+
+@dataclass
+class EspansoConfig:
+    """Configuration for Espanso integration."""
+    
+    enabled: bool = True
+    config_path: str = ""  # Auto-detect if empty
+    auto_sync: bool = False
+
+
+@dataclass
+class Config:
+    """Main application configuration."""
+    
+    llm: LLMConfig = field(default_factory=LLMConfig)
+    ui: UIConfig = field(default_factory=UIConfig)
+    espanso: EspansoConfig = field(default_factory=EspansoConfig)
+    
+    def to_dict(self) -> dict:
+        """Convert config to dictionary."""
+        return asdict(self)
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> "Config":
+        """Create config from dictionary."""
+        llm_data = data.get("llm", {})
+        ui_data = data.get("ui", {})
+        espanso_data = data.get("espanso", {})
+        
+        return cls(
+            llm=LLMConfig(**llm_data) if llm_data else LLMConfig(),
+            ui=UIConfig(**ui_data) if ui_data else UIConfig(),
+            espanso=EspansoConfig(**espanso_data) if espanso_data else EspansoConfig(),
+        )
+
+
+class ConfigManager:
+    """Manages loading and saving application configuration."""
+    
+    def __init__(self, config_path: Optional[Path] = None):
+        """Initialize ConfigManager.
+        
+        Args:
+            config_path: Path to config file. Uses default if None.
+        """
+        self.config_path = config_path or get_config_path()
+        self._config: Optional[Config] = None
+    
+    @property
+    def config(self) -> Config:
+        """Get the current configuration, loading if necessary."""
+        if self._config is None:
+            self._config = self.load()
+        return self._config
+    
+    def load(self) -> Config:
+        """Load configuration from file.
+        
+        Returns:
+            Config object (defaults if file doesn't exist).
+        """
+        if not self.config_path.exists():
+            return Config()
+        
+        try:
+            with open(self.config_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return Config.from_dict(data)
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            # Log error and return defaults
+            print(f"Warning: Failed to load config: {e}")
+            return Config()
+    
+    def save(self, config: Optional[Config] = None) -> bool:
+        """Save configuration to file.
+        
+        Args:
+            config: Config to save. Uses current config if None.
+            
+        Returns:
+            True if saved successfully, False otherwise.
+        """
+        if config is None:
+            config = self.config
+        
+        try:
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.config_path, "w", encoding="utf-8") as f:
+                json.dump(config.to_dict(), f, indent=2)
+            self._config = config
+            return True
+        except OSError as e:
+            print(f"Error: Failed to save config: {e}")
+            return False
+    
+    def update(self, **kwargs) -> bool:
+        """Update specific config values and save.
+        
+        Supports nested keys like 'llm.model_path'.
+        
+        Args:
+            **kwargs: Key-value pairs to update.
+            
+        Returns:
+            True if saved successfully, False otherwise.
+        """
+        config = self.config
+        
+        for key, value in kwargs.items():
+            parts = key.split(".")
+            if len(parts) == 2:
+                section, attr = parts
+                if hasattr(config, section):
+                    section_obj = getattr(config, section)
+                    if hasattr(section_obj, attr):
+                        setattr(section_obj, attr, value)
+            elif len(parts) == 1:
+                if hasattr(config, key):
+                    setattr(config, key, value)
+        
+        return self.save(config)
+
+
+# Global config manager instance
+_config_manager: Optional[ConfigManager] = None
+
+
+def get_config_manager() -> ConfigManager:
+    """Get the global ConfigManager instance."""
+    global _config_manager
+    if _config_manager is None:
+        _config_manager = ConfigManager()
+    return _config_manager
+
+
+def get_config() -> Config:
+    """Get the current configuration."""
+    return get_config_manager().config

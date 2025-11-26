@@ -1,0 +1,23 @@
+{
+  "name": "Write Tests",
+  "description": "Generate unit tests for code",
+  "trigger": ":tests",
+  "variables": [
+    {
+      "name": "language",
+      "label": "Programming Language",
+      "default": "Python"
+    },
+    {
+      "name": "framework",
+      "label": "Test Framework",
+      "default": "pytest"
+    },
+    {
+      "name": "code",
+      "label": "Code to Test",
+      "multiline": true
+    }
+  ],
+  "content": "Write comprehensive unit tests for the following {{language}} code using {{framework}}:\n\n```{{language}}\n{{code}}\n```\n\nInclude:\n- Edge cases\n- Error handling\n- Happy path tests\n- Clear test names"
+}

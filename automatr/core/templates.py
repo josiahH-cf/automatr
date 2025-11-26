@@ -1,0 +1,296 @@
+"""Template management for Automatr.
+
+Handles loading, saving, and rendering JSON templates.
+Templates are stored as individual JSON files in the templates directory.
+"""
+
+import json
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Iterator
+
+from automatr.core.config import get_templates_dir
+
+
+@dataclass
+class Variable:
+    """A variable/placeholder in a template."""
+    
+    name: str
+    label: str = ""
+    default: str = ""
+    multiline: bool = False
+    
+    def __post_init__(self):
+        if not self.label:
+            self.label = self.name.replace("_", " ").title()
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        d = {"name": self.name, "label": self.label}
+        if self.default:
+            d["default"] = self.default
+        if self.multiline:
+            d["multiline"] = True
+        return d
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Variable":
+        """Create from dictionary."""
+        return cls(
+            name=data.get("name", ""),
+            label=data.get("label", ""),
+            default=data.get("default", ""),
+            multiline=data.get("multiline", False),
+        )
+
+
+@dataclass
+class Template:
+    """A prompt template."""
+    
+    name: str
+    content: str
+    description: str = ""
+    trigger: str = ""  # Espanso trigger (e.g., ":review")
+    variables: List[Variable] = field(default_factory=list)
+    
+    # Internal: path to the JSON file (set when loaded from disk)
+    _path: Optional[Path] = field(default=None, repr=False)
+    
+    @property
+    def filename(self) -> str:
+        """Generate a safe filename from the template name."""
+        # Convert to lowercase, replace spaces with underscores
+        safe = self.name.lower().replace(" ", "_")
+        # Remove non-alphanumeric characters except underscores
+        safe = re.sub(r"[^a-z0-9_]", "", safe)
+        return f"{safe}.json"
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        d = {
+            "name": self.name,
+            "content": self.content,
+        }
+        if self.description:
+            d["description"] = self.description
+        if self.trigger:
+            d["trigger"] = self.trigger
+        if self.variables:
+            d["variables"] = [v.to_dict() for v in self.variables]
+        return d
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], path: Optional[Path] = None) -> "Template":
+        """Create from dictionary."""
+        variables = [
+            Variable.from_dict(v) for v in data.get("variables", [])
+        ]
+        return cls(
+            name=data.get("name", "Untitled"),
+            content=data.get("content", ""),
+            description=data.get("description", ""),
+            trigger=data.get("trigger", ""),
+            variables=variables,
+            _path=path,
+        )
+    
+    def render(self, values: Dict[str, str]) -> str:
+        """Render the template with the given variable values.
+        
+        Replaces {{variable_name}} placeholders with their values.
+        
+        Args:
+            values: Dictionary of variable name -> value.
+            
+        Returns:
+            Rendered template string.
+        """
+        result = self.content
+        
+        for var in self.variables:
+            placeholder = f"{{{{{var.name}}}}}"
+            value = values.get(var.name, var.default)
+            result = result.replace(placeholder, value)
+        
+        # Remove any unreplaced placeholders
+        result = re.sub(r"\{\{[^}]+\}\}", "", result)
+        
+        return result
+
+
+class TemplateManager:
+    """Manages template CRUD operations.
+    
+    Templates are stored as individual JSON files in the templates directory.
+    No SQLite, no indexing — just filesystem operations.
+    """
+    
+    def __init__(self, templates_dir: Optional[Path] = None):
+        """Initialize TemplateManager.
+        
+        Args:
+            templates_dir: Directory for template files. Uses default if None.
+        """
+        self.templates_dir = templates_dir or get_templates_dir()
+        self.templates_dir.mkdir(parents=True, exist_ok=True)
+    
+    def list_all(self) -> List[Template]:
+        """List all templates.
+        
+        Returns:
+            List of Template objects, sorted by name.
+        """
+        templates = []
+        for path in self.templates_dir.glob("*.json"):
+            try:
+                template = self.load(path)
+                if template:
+                    templates.append(template)
+            except Exception as e:
+                print(f"Warning: Failed to load {path}: {e}")
+        
+        return sorted(templates, key=lambda t: t.name.lower())
+    
+    def load(self, path: Path) -> Optional[Template]:
+        """Load a template from a JSON file.
+        
+        Args:
+            path: Path to the JSON file.
+            
+        Returns:
+            Template object, or None if loading failed.
+        """
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return Template.from_dict(data, path=path)
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"Error loading template {path}: {e}")
+            return None
+    
+    def get(self, name: str) -> Optional[Template]:
+        """Get a template by name.
+        
+        Args:
+            name: Template name.
+            
+        Returns:
+            Template object, or None if not found.
+        """
+        # Create expected filename
+        safe_name = name.lower().replace(" ", "_")
+        safe_name = re.sub(r"[^a-z0-9_]", "", safe_name)
+        path = self.templates_dir / f"{safe_name}.json"
+        
+        if path.exists():
+            return self.load(path)
+        
+        # Fallback: search all templates
+        for template in self.list_all():
+            if template.name.lower() == name.lower():
+                return template
+        
+        return None
+    
+    def save(self, template: Template) -> bool:
+        """Save a template to disk.
+        
+        Args:
+            template: Template to save.
+            
+        Returns:
+            True if saved successfully, False otherwise.
+        """
+        # Determine path
+        if template._path:
+            path = template._path
+        else:
+            path = self.templates_dir / template.filename
+        
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(template.to_dict(), f, indent=2)
+            template._path = path
+            return True
+        except OSError as e:
+            print(f"Error saving template: {e}")
+            return False
+    
+    def delete(self, template: Template) -> bool:
+        """Delete a template from disk.
+        
+        Args:
+            template: Template to delete.
+            
+        Returns:
+            True if deleted successfully, False otherwise.
+        """
+        if not template._path or not template._path.exists():
+            return False
+        
+        try:
+            template._path.unlink()
+            return True
+        except OSError as e:
+            print(f"Error deleting template: {e}")
+            return False
+    
+    def create(
+        self,
+        name: str,
+        content: str,
+        description: str = "",
+        trigger: str = "",
+        variables: Optional[List[Dict[str, Any]]] = None,
+    ) -> Template:
+        """Create and save a new template.
+        
+        Args:
+            name: Template name.
+            content: Template content with {{variable}} placeholders.
+            description: Optional description.
+            trigger: Optional Espanso trigger.
+            variables: Optional list of variable dicts.
+            
+        Returns:
+            The created Template object.
+        """
+        var_list = []
+        if variables:
+            var_list = [Variable.from_dict(v) for v in variables]
+        
+        template = Template(
+            name=name,
+            content=content,
+            description=description,
+            trigger=trigger,
+            variables=var_list,
+        )
+        
+        self.save(template)
+        return template
+    
+    def iter_with_triggers(self) -> Iterator[Template]:
+        """Iterate over templates that have Espanso triggers.
+        
+        Yields:
+            Templates with non-empty trigger field.
+        """
+        for template in self.list_all():
+            if template.trigger:
+                yield template
+
+
+# Global template manager instance
+_template_manager: Optional[TemplateManager] = None
+
+
+def get_template_manager() -> TemplateManager:
+    """Get the global TemplateManager instance."""
+    global _template_manager
+    if _template_manager is None:
+        _template_manager = TemplateManager()
+    return _template_manager
