@@ -203,3 +203,74 @@ def restart_espanso() -> bool:
             pass
     
     return False
+
+
+class EspansoManager:
+    """Manager for Espanso integration."""
+    
+    def __init__(self):
+        self.config_dir = get_espanso_config_dir()
+        self.match_dir = get_match_dir()
+    
+    def is_available(self) -> bool:
+        """Check if Espanso is available."""
+        return self.match_dir is not None
+    
+    def sync(self) -> int:
+        """Sync templates to Espanso and return count of synced templates."""
+        if not self.match_dir:
+            return 0
+        
+        template_manager = get_template_manager()
+        matches = []
+        
+        for template in template_manager.iter_with_triggers():
+            match_entry = {
+                "trigger": template.trigger,
+                "replace": template.content,
+            }
+            
+            if template.variables:
+                match_entry["vars"] = []
+                for var in template.variables:
+                    var_entry = {
+                        "name": var.name,
+                        "type": "form",
+                        "params": {
+                            "layout": f"{var.label}: {{{{value}}}}",
+                        },
+                    }
+                    if var.default:
+                        var_entry["params"]["default"] = var.default
+                    match_entry["vars"].append(var_entry)
+            
+            matches.append(match_entry)
+        
+        if not matches:
+            return 0
+        
+        # Write YAML file
+        output_path = self.match_dir / "automatr.yml"
+        try:
+            content = {"matches": matches}
+            with open(output_path, "w", encoding="utf-8") as f:
+                yaml.dump(content, f, default_flow_style=False, allow_unicode=True)
+            return len(matches)
+        except Exception:
+            return 0
+    
+    def restart(self) -> bool:
+        """Restart Espanso daemon."""
+        return restart_espanso()
+
+
+# Global instance
+_espanso_manager: Optional[EspansoManager] = None
+
+
+def get_espanso_manager() -> EspansoManager:
+    """Get the global Espanso manager."""
+    global _espanso_manager
+    if _espanso_manager is None:
+        _espanso_manager = EspansoManager()
+    return _espanso_manager

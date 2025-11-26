@@ -4,6 +4,7 @@ import sys
 from typing import Optional
 
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -12,6 +13,8 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMainWindow,
+    QMenu,
+    QMenuBar,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
@@ -29,6 +32,7 @@ from automatr import __version__
 from automatr.core.config import get_config
 from automatr.core.templates import Template, get_template_manager
 from automatr.integrations.llm import get_llm_client, get_llm_server
+from automatr.integrations.espanso import get_espanso_manager
 from automatr.ui.theme import get_theme_stylesheet
 from automatr.ui.template_editor import TemplateEditor
 
@@ -145,10 +149,130 @@ class MainWindow(QMainWindow):
         self.current_template: Optional[Template] = None
         self.worker: Optional[GenerationWorker] = None
         
+        self._setup_menu_bar()
         self._setup_ui()
         self._setup_status_bar()
+        self._setup_shortcuts()
         self._load_templates()
         self._check_llm_status()
+    
+    def _setup_menu_bar(self):
+        """Set up the menu bar."""
+        menubar = self.menuBar()
+        
+        # File menu
+        file_menu = menubar.addMenu("&File")
+        
+        new_action = QAction("&New Template", self)
+        new_action.setShortcut(QKeySequence.StandardKey.New)
+        new_action.triggered.connect(self._new_template)
+        file_menu.addAction(new_action)
+        
+        file_menu.addSeparator()
+        
+        sync_action = QAction("&Sync to Espanso", self)
+        sync_action.setShortcut(QKeySequence("Ctrl+E"))
+        sync_action.triggered.connect(self._sync_espanso)
+        file_menu.addAction(sync_action)
+        
+        file_menu.addSeparator()
+        
+        quit_action = QAction("&Quit", self)
+        quit_action.setShortcut(QKeySequence.StandardKey.Quit)
+        quit_action.triggered.connect(self.close)
+        file_menu.addAction(quit_action)
+        
+        # LLM menu
+        llm_menu = menubar.addMenu("&LLM")
+        
+        self.start_server_action = QAction("&Start Server", self)
+        self.start_server_action.triggered.connect(self._start_server)
+        llm_menu.addAction(self.start_server_action)
+        
+        self.stop_server_action = QAction("S&top Server", self)
+        self.stop_server_action.triggered.connect(self._stop_server)
+        llm_menu.addAction(self.stop_server_action)
+        
+        llm_menu.addSeparator()
+        
+        refresh_action = QAction("&Check Status", self)
+        refresh_action.triggered.connect(self._check_llm_status)
+        llm_menu.addAction(refresh_action)
+        
+        # Help menu
+        help_menu = menubar.addMenu("&Help")
+        
+        about_action = QAction("&About Automatr", self)
+        about_action.triggered.connect(self._show_about)
+        help_menu.addAction(about_action)
+    
+    def _setup_shortcuts(self):
+        """Set up additional keyboard shortcuts."""
+        # Generate shortcut
+        pass  # Ctrl+G is handled below via button
+    
+    def _sync_espanso(self):
+        """Sync templates to Espanso."""
+        manager = get_espanso_manager()
+        count = manager.sync()
+        
+        if count > 0:
+            self.status_bar.showMessage(f"Synced {count} templates to Espanso", 3000)
+            QMessageBox.information(
+                self,
+                "Espanso Sync",
+                f"Successfully synced {count} templates to Espanso.\n\n"
+                "Restart Espanso to apply changes.",
+            )
+        else:
+            self.status_bar.showMessage("No templates to sync", 3000)
+    
+    def _start_server(self):
+        """Start the LLM server."""
+        server = get_llm_server()
+        if server.is_running():
+            self.status_bar.showMessage("Server already running", 3000)
+            return
+        
+        self.status_bar.showMessage("Starting server...", 0)
+        QApplication.processEvents()
+        
+        success, message = server.start()
+        
+        if success:
+            self.status_bar.showMessage("Server started", 3000)
+        else:
+            QMessageBox.critical(self, "Server Error", message)
+        
+        self._check_llm_status()
+    
+    def _stop_server(self):
+        """Stop the LLM server."""
+        server = get_llm_server()
+        success, message = server.stop()
+        
+        if success:
+            self.status_bar.showMessage(message, 3000)
+        else:
+            QMessageBox.warning(self, "Server", message)
+        
+        self._check_llm_status()
+    
+    def _show_about(self):
+        """Show the about dialog."""
+        QMessageBox.about(
+            self,
+            "About Automatr",
+            f"<h2>Automatr v{__version__}</h2>"
+            "<p>Minimal prompt automation with local LLM.</p>"
+            "<p><b>Features:</b></p>"
+            "<ul>"
+            "<li>Template-driven prompts</li>"
+            "<li>Local llama.cpp integration</li>"
+            "<li>Espanso text expansion</li>"
+            "</ul>"
+            "<p><a href='https://github.com/yourname/automatr'>GitHub</a></p>",
+        )
     
     def _setup_ui(self):
         """Set up the main UI."""
@@ -213,8 +337,9 @@ class MainWindow(QMainWindow):
         middle_layout.addWidget(self.variable_form)
         
         # Generate button
-        self.generate_btn = QPushButton("Generate")
+        self.generate_btn = QPushButton("Generate (Ctrl+G)")
         self.generate_btn.setEnabled(False)
+        self.generate_btn.setShortcut(QKeySequence("Ctrl+G"))
         self.generate_btn.clicked.connect(self._generate)
         middle_layout.addWidget(self.generate_btn)
         
@@ -285,14 +410,20 @@ class MainWindow(QMainWindow):
         )
     
     def _check_llm_status(self):
-        """Check if the LLM server is running."""
+        """Check if the LLM server is running and update UI."""
         server = get_llm_server()
-        if server.is_running():
+        is_running = server.is_running()
+        
+        if is_running:
             self.llm_status_label.setText("LLM: Connected")
             self.llm_status_label.setStyleSheet("color: #4ec9b0;")
         else:
             self.llm_status_label.setText("LLM: Not Running")
             self.llm_status_label.setStyleSheet("color: #f48771;")
+        
+        # Update menu actions
+        self.start_server_action.setEnabled(not is_running)
+        self.stop_server_action.setEnabled(is_running)
     
     def _on_template_selected(self, item: QListWidgetItem):
         """Handle template selection."""
