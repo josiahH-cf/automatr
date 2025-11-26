@@ -195,6 +195,12 @@ class MainWindow(QMainWindow):
         
         llm_menu.addSeparator()
         
+        # Model selector submenu
+        self.model_menu = llm_menu.addMenu("Select &Model")
+        self.model_menu.aboutToShow.connect(self._populate_model_menu)
+        
+        llm_menu.addSeparator()
+        
         refresh_action = QAction("&Check Status", self)
         refresh_action.triggered.connect(self._check_llm_status)
         llm_menu.addAction(refresh_action)
@@ -257,6 +263,54 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Server", message)
         
         self._check_llm_status()
+    
+    def _populate_model_menu(self):
+        """Populate the model selector submenu with discovered models."""
+        self.model_menu.clear()
+        
+        server = get_llm_server()
+        models = server.find_models()
+        
+        if not models:
+            no_models = QAction("No models found", self)
+            no_models.setEnabled(False)
+            self.model_menu.addAction(no_models)
+            
+            hint = QAction("Place .gguf files in ~/models/", self)
+            hint.setEnabled(False)
+            self.model_menu.addAction(hint)
+            return
+        
+        config = get_config()
+        current_model = config.llm.model_path
+        
+        for model in models:
+            action = QAction(f"{model.name} ({model.size_gb:.1f} GB)", self)
+            action.setCheckable(True)
+            action.setChecked(str(model.path) == current_model)
+            action.setData(str(model.path))
+            action.triggered.connect(lambda checked, m=model: self._select_model(m))
+            self.model_menu.addAction(action)
+    
+    def _select_model(self, model):
+        """Select a model and update configuration."""
+        from automatr.core.config import get_config_manager
+        
+        config_manager = get_config_manager()
+        config_manager.config.llm.model_path = str(model.path)
+        config_manager.save()
+        
+        self.status_bar.showMessage(f"Selected model: {model.name}", 3000)
+        
+        # If server is running, inform user they need to restart
+        server = get_llm_server()
+        if server.is_running():
+            QMessageBox.information(
+                self,
+                "Model Changed",
+                f"Model changed to {model.name}.\n\n"
+                "Restart the server (LLM → Stop, then Start) to use the new model.",
+            )
     
     def _show_about(self):
         """Show the about dialog."""
