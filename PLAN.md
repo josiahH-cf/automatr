@@ -140,7 +140,7 @@ Each template file is a single JSON object:
 ## AutoHotkey Integration
 
 - Minimal `launch.ahk` script.
-- Default hotkey: `Ctrl+Shift+J`.
+- Default hotkey: `Ctrl+Shift+A`.
 - Action: Focus existing window or launch via `wsl.exe`.
 - Installer places the script in a known location; user runs it at startup.
 
@@ -229,6 +229,10 @@ The following are **not** part of Automatr and must not be carried over:
 ### Phase 7: Migration & Polish
 - [x] Create template migration script.
 - [x] Write user documentation.
+- [x] Add menu bar with LLM controls.
+- [x] Add model selector.
+- [x] Add keyboard shortcuts.
+- [x] Improve error messages.
 - [ ] Final testing and hardening.
 
 ---
