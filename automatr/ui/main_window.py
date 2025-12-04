@@ -1,12 +1,15 @@
 """Main window for Automatr GUI."""
 
+import shutil
 import sys
+from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QAction, QKeySequence
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl
+from PyQt6.QtGui import QAction, QKeySequence, QDesktopServices
 from PyQt6.QtWidgets import (
     QApplication,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -17,6 +20,7 @@ from PyQt6.QtWidgets import (
     QMenuBar,
     QMessageBox,
     QPlainTextEdit,
+    QProgressDialog,
     QPushButton,
     QSplitter,
     QStatusBar,
@@ -65,6 +69,61 @@ class GenerationWorker(QThread):
                 
         except Exception as e:
             self.error.emit(str(e))
+
+
+class ModelCopyWorker(QThread):
+    """Background worker for copying model files with progress."""
+    
+    finished = pyqtSignal(bool, str)  # success, message or path
+    progress = pyqtSignal(int)  # percentage 0-100
+    
+    def __init__(self, source: Path, dest: Path):
+        super().__init__()
+        self.source = source
+        self.dest = dest
+        self._canceled = False
+    
+    def cancel(self):
+        """Request cancellation of the copy operation."""
+        self._canceled = True
+    
+    def run(self):
+        try:
+            total_size = self.source.stat().st_size
+            copied = 0
+            chunk_size = 1024 * 1024  # 1MB chunks
+            
+            with open(self.source, "rb") as src:
+                with open(self.dest, "wb") as dst:
+                    while True:
+                        if self._canceled:
+                            dst.close()
+                            if self.dest.exists():
+                                self.dest.unlink()
+                            self.finished.emit(False, "Copy canceled")
+                            return
+                        
+                        chunk = src.read(chunk_size)
+                        if not chunk:
+                            break
+                        dst.write(chunk)
+                        copied += len(chunk)
+                        percent = int((copied / total_size) * 100)
+                        self.progress.emit(percent)
+            
+            # Copy file metadata
+            shutil.copystat(self.source, self.dest)
+            self.finished.emit(True, str(self.dest))
+            
+        except PermissionError:
+            # Clean up partial file
+            if self.dest.exists():
+                self.dest.unlink()
+            self.finished.emit(False, f"Permission denied writing to:\n{self.dest.parent}")
+        except OSError as e:
+            if self.dest.exists():
+                self.dest.unlink()
+            self.finished.emit(False, f"Failed to copy file: {e}")
 
 
 class VariableFormWidget(QScrollArea):
@@ -199,6 +258,10 @@ class MainWindow(QMainWindow):
         self.model_menu = llm_menu.addMenu("Select &Model")
         self.model_menu.aboutToShow.connect(self._populate_model_menu)
         
+        download_models_action = QAction("&Download Models (Hugging Face)...", self)
+        download_models_action.triggered.connect(self._open_hugging_face)
+        llm_menu.addAction(download_models_action)
+        
         llm_menu.addSeparator()
         
         refresh_action = QAction("&Check Status", self)
@@ -279,6 +342,11 @@ class MainWindow(QMainWindow):
             hint = QAction("Place .gguf files in ~/models/", self)
             hint.setEnabled(False)
             self.model_menu.addAction(hint)
+            
+            self.model_menu.addSeparator()
+            add_action = QAction("Add Model from File...", self)
+            add_action.triggered.connect(self._add_model_from_file)
+            self.model_menu.addAction(add_action)
             return
         
         config = get_config()
@@ -291,6 +359,12 @@ class MainWindow(QMainWindow):
             action.setData(str(model.path))
             action.triggered.connect(lambda checked, m=model: self._select_model(m))
             self.model_menu.addAction(action)
+        
+        # Always show Add Model option at the bottom
+        self.model_menu.addSeparator()
+        add_action = QAction("Add Model from File...", self)
+        add_action.triggered.connect(self._add_model_from_file)
+        self.model_menu.addAction(add_action)
     
     def _select_model(self, model):
         """Select a model and update configuration."""
@@ -310,6 +384,112 @@ class MainWindow(QMainWindow):
                 "Model Changed",
                 f"Model changed to {model.name}.\n\n"
                 "Restart the server (LLM → Stop, then Start) to use the new model.",
+            )
+    
+    def _open_hugging_face(self):
+        """Open Hugging Face models page in browser."""
+        url = QUrl("https://huggingface.co/models?sort=trending&search=gguf")
+        QDesktopServices.openUrl(url)
+        self.status_bar.showMessage("Opened Hugging Face in browser", 3000)
+
+    def _launch_web_server(self):
+        """Open the LLM web server in the default browser."""
+        config = get_config()
+        port = config.llm.server_port
+        url = QUrl(f"http://127.0.0.1:{port}")
+        QDesktopServices.openUrl(url)
+        self.status_bar.showMessage(f"Opened http://127.0.0.1:{port} in browser", 3000)
+
+    def _add_model_from_file(self):
+        """Add a model from a local GGUF file."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select GGUF Model",
+            str(Path.home()),
+            "GGUF Models (*.gguf);;All Files (*)",
+        )
+        
+        if not file_path:
+            return  # User cancelled
+        
+        source = Path(file_path)
+        server = get_llm_server()
+        dest_dir = server.get_models_dir()
+        dest = dest_dir / source.name
+        
+        # Check if already exists
+        if dest.exists():
+            QMessageBox.warning(
+                self,
+                "Model Exists",
+                f"A model with this name already exists:\n{dest}\n\n"
+                "Please rename the file or remove the existing model.",
+            )
+            return
+        
+        # Get file size for progress
+        file_size = source.stat().st_size
+        size_gb = file_size / (1024 ** 3)
+        
+        # Set up progress dialog
+        self.progress_dialog = QProgressDialog(
+            f"Copying {source.name} ({size_gb:.1f} GB)...",
+            "Cancel",
+            0,
+            100,
+            self,
+        )
+        self.progress_dialog.setWindowTitle("Adding Model")
+        self.progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
+        self.progress_dialog.setAutoClose(False)
+        self.progress_dialog.setAutoReset(False)
+        self.progress_dialog.setValue(0)
+        
+        # Start copy worker
+        self.copy_worker = ModelCopyWorker(source, dest)
+        self.copy_worker.progress.connect(self.progress_dialog.setValue)
+        self.copy_worker.finished.connect(self._on_model_copy_finished)
+        self.progress_dialog.canceled.connect(self._on_model_copy_canceled)
+        
+        self.copy_worker.start()
+        self.progress_dialog.show()
+    
+    def _on_model_copy_canceled(self):
+        """Handle user canceling the copy operation."""
+        if hasattr(self, "copy_worker") and self.copy_worker.isRunning():
+            self.copy_worker.cancel()
+            self.copy_worker.wait(timeout=5000)  # Wait up to 5 seconds
+        
+        self.status_bar.showMessage("Model import canceled", 3000)
+    
+    def _on_model_copy_finished(self, success: bool, message: str):
+        """Handle model copy completion."""
+        self.progress_dialog.close()
+        
+        if success:
+            # Auto-select the new model
+            from automatr.core.config import get_config_manager
+            from automatr.integrations.llm import ModelInfo
+            
+            model_path = Path(message)
+            model = ModelInfo.from_path(model_path)
+            
+            config_manager = get_config_manager()
+            config_manager.config.llm.model_path = str(model_path)
+            config_manager.save()
+            
+            QMessageBox.information(
+                self,
+                "Model Added",
+                f"Successfully added model:\n{model.name}\n\n"
+                "The model is now selected and ready to use.",
+            )
+            self.status_bar.showMessage(f"Added model: {model.name}", 3000)
+        else:
+            QMessageBox.critical(
+                self,
+                "Import Failed",
+                f"Failed to import model:\n\n{message}",
             )
     
     def _show_about(self):
@@ -450,7 +630,12 @@ class MainWindow(QMainWindow):
         """Set up the status bar."""
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        
+
+        self.launch_server_btn = QPushButton("Launch Web Server")
+        self.launch_server_btn.setObjectName("secondary")
+        self.launch_server_btn.clicked.connect(self._launch_web_server)
+        self.status_bar.addWidget(self.launch_server_btn)
+
         self.llm_status_label = QLabel("LLM: Checking...")
         self.status_bar.addPermanentWidget(self.llm_status_label)
     

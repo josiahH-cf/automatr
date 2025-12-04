@@ -252,6 +252,51 @@ class LLMServerManager:
         
         return sorted(models, key=lambda m: m.name.lower())
     
+    def get_models_dir(self) -> Path:
+        """Get the models directory path.
+        
+        Returns:
+            Path to the models directory (creates if needed).
+        """
+        model_dir = self.config.model_dir
+        if not model_dir:
+            model_dir = str(Path.home() / "models")
+        
+        path = Path(model_dir).expanduser()
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+    
+    def import_model(self, source_path: Path) -> Tuple[bool, str]:
+        """Import a GGUF model file into the models directory.
+        
+        Copies the file to the models directory. Does not overwrite existing files.
+        
+        Args:
+            source_path: Path to the source GGUF file.
+            
+        Returns:
+            Tuple of (success, message or destination path).
+        """
+        if not source_path.exists():
+            return False, f"Source file not found: {source_path}"
+        
+        if source_path.suffix.lower() != ".gguf":
+            return False, "Only .gguf files are supported"
+        
+        dest_dir = self.get_models_dir()
+        dest_path = dest_dir / source_path.name
+        
+        if dest_path.exists():
+            return False, f"A model with this name already exists:\n{dest_path}"
+        
+        try:
+            shutil.copy2(source_path, dest_path)
+            return True, str(dest_path)
+        except PermissionError:
+            return False, f"Permission denied writing to:\n{dest_dir}"
+        except OSError as e:
+            return False, f"Failed to copy file: {e}"
+    
     def is_running(self) -> bool:
         """Check if the server is currently running.
         
@@ -365,20 +410,38 @@ class LLMServerManager:
             self._process = None
             return True, "Server stopped"
         
-        # Try to find and kill by port
+        # Try to find and kill by port or process name
         try:
             import psutil
             for proc in psutil.process_iter(["pid", "name", "cmdline"]):
                 try:
-                    cmdline = proc.info.get("cmdline", [])
-                    if cmdline and "llama-server" in " ".join(cmdline):
+                    # Check process name first (most reliable)
+                    name = proc.info.get("name", "")
+                    if name and "llama-server" in name:
                         proc.terminate()
-                        proc.wait(timeout=5)
+                        try:
+                            proc.wait(timeout=5)
+                        except psutil.TimeoutExpired:
+                            proc.kill()
+                        return True, "Server stopped"
+                    
+                    # Fallback: check command line
+                    cmdline = proc.info.get("cmdline", [])
+                    if cmdline and any("llama-server" in arg for arg in cmdline):
+                        proc.terminate()
+                        try:
+                            proc.wait(timeout=5)
+                        except psutil.TimeoutExpired:
+                            proc.kill()
                         return True, "Server stopped"
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
         except ImportError:
-            pass
+            # Fallback: try pkill
+            import subprocess
+            result = subprocess.run(["pkill", "-f", "llama-server"], capture_output=True)
+            if result.returncode == 0:
+                return True, "Server stopped"
         
         return False, "Could not stop server"
 
