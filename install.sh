@@ -224,17 +224,11 @@ setup_config() {
     mkdir -p "$CONFIG_DIR/templates"
     mkdir -p "$DATA_DIR"
     
-    # Copy example templates if they don't exist
+    # Copy example templates (preserving folder structure) if they don't exist
     if [[ -d "$SCRIPT_DIR/templates" ]]; then
-        for f in "$SCRIPT_DIR/templates"/*.json; do
-            if [[ -f "$f" ]]; then
-                dest="$CONFIG_DIR/templates/$(basename "$f")"
-                if [[ ! -f "$dest" ]]; then
-                    cp "$f" "$dest"
-                    log_info "Copied template: $(basename "$f")"
-                fi
-            fi
-        done
+        # Use cp -rn to recursively copy without overwriting existing files
+        cp -rn "$SCRIPT_DIR/templates/"* "$CONFIG_DIR/templates/" 2>/dev/null || true
+        log_info "Synced templates from repository"
     fi
     
     # Create default config if it doesn't exist

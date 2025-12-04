@@ -85,6 +85,13 @@ class LLMConfig:
     context_size: int = 4096
     gpu_layers: int = 0
     server_binary: str = ""  # Auto-detect if empty
+    
+    # Generation parameters (live-tunable)
+    temperature: float = 0.7
+    max_tokens: int = 512
+    top_p: float = 1.0
+    top_k: int = 40
+    repeat_penalty: float = 1.1
 
 
 @dataclass
@@ -94,7 +101,7 @@ class UIConfig:
     theme: str = "dark"
     window_width: int = 900
     window_height: int = 700
-    font_size: int = 11
+    font_size: int = 13  # Base font size for text content
 
 
 @dataclass
@@ -103,7 +110,7 @@ class EspansoConfig:
     
     enabled: bool = True
     config_path: str = ""  # Auto-detect if empty
-    auto_sync: bool = False
+    auto_sync: bool = True  # Auto-sync on template save/delete
 
 
 @dataclass
@@ -234,3 +241,15 @@ def get_config_manager() -> ConfigManager:
 def get_config() -> Config:
     """Get the current configuration."""
     return get_config_manager().config
+
+
+def save_config(config: Optional[Config] = None) -> bool:
+    """Save the configuration to file.
+    
+    Args:
+        config: Config to save. Uses current config if None.
+        
+    Returns:
+        True if saved successfully, False otherwise.
+    """
+    return get_config_manager().save(config)

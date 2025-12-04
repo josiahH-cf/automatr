@@ -144,7 +144,7 @@ class TemplateManager:
             List of Template objects, sorted by name.
         """
         templates = []
-        for path in self.templates_dir.glob("*.json"):
+        for path in self.templates_dir.glob("**/*.json"):
             try:
                 template = self.load(path)
                 if template:
@@ -282,6 +282,118 @@ class TemplateManager:
         for template in self.list_all():
             if template.trigger:
                 yield template
+    
+    def list_folders(self) -> List[str]:
+        """List all category folders.
+        
+        Returns:
+            List of folder names (relative to templates_dir), sorted alphabetically.
+        """
+        folders = []
+        for path in self.templates_dir.iterdir():
+            if path.is_dir():
+                folders.append(path.name)
+        return sorted(folders, key=str.lower)
+    
+    def create_folder(self, name: str) -> bool:
+        """Create a new category folder.
+        
+        Args:
+            name: Folder name.
+            
+        Returns:
+            True if created successfully, False otherwise.
+        """
+        # Sanitize folder name
+        safe_name = re.sub(r"[^a-zA-Z0-9_ -]", "", name).strip()
+        if not safe_name:
+            return False
+        
+        folder_path = self.templates_dir / safe_name
+        if folder_path.exists():
+            return False
+        
+        try:
+            folder_path.mkdir(parents=True, exist_ok=True)
+            return True
+        except OSError:
+            return False
+    
+    def delete_folder(self, name: str) -> tuple[bool, str]:
+        """Delete a category folder (must be empty).
+        
+        Args:
+            name: Folder name.
+            
+        Returns:
+            Tuple of (success, error_message).
+        """
+        folder_path = self.templates_dir / name
+        if not folder_path.exists() or not folder_path.is_dir():
+            return False, "Folder does not exist."
+        
+        # Check if folder has templates
+        templates_in_folder = list(folder_path.glob("*.json"))
+        if templates_in_folder:
+            return False, f"Cannot delete folder '{name}' because it contains {len(templates_in_folder)} template(s). Move or delete them first."
+        
+        try:
+            folder_path.rmdir()
+            return True, ""
+        except OSError as e:
+            return False, str(e)
+    
+    def get_template_folder(self, template: Template) -> str:
+        """Get the folder name for a template.
+        
+        Args:
+            template: Template to check.
+            
+        Returns:
+            Folder name, or empty string if in root.
+        """
+        if not template._path:
+            return ""
+        
+        parent = template._path.parent
+        if parent == self.templates_dir:
+            return ""
+        return parent.name
+    
+    def save_to_folder(self, template: Template, folder: str = "") -> bool:
+        """Save a template to a specific folder.
+        
+        Args:
+            template: Template to save.
+            folder: Folder name (empty string for root).
+            
+        Returns:
+            True if saved successfully, False otherwise.
+        """
+        # Determine target directory
+        if folder:
+            target_dir = self.templates_dir / folder
+            target_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            target_dir = self.templates_dir
+        
+        # If template already has a path in a different location, we're moving it
+        old_path = template._path
+        new_path = target_dir / template.filename
+        
+        try:
+            with open(new_path, "w", encoding="utf-8") as f:
+                json.dump(template.to_dict(), f, indent=2)
+            
+            # Remove old file if we moved it
+            if old_path and old_path != new_path and old_path.exists():
+                old_path.unlink()
+            
+            template._path = new_path
+            return True
+        except OSError as e:
+            print(f"Error saving template: {e}")
+            return False
 
 
 # Global template manager instance

@@ -4,6 +4,7 @@ from typing import Optional
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -90,6 +91,12 @@ class TemplateEditor(QDialog):
         self.template = template
         self.variables: list[Variable] = list(template.variables) if template else []
         
+        # Get initial folder for existing templates
+        self._initial_folder = ""
+        if template:
+            manager = get_template_manager()
+            self._initial_folder = manager.get_template_folder(template)
+        
         self.setWindowTitle("Edit Template" if template else "New Template")
         self.setMinimumSize(600, 500)
         self._setup_ui()
@@ -114,6 +121,11 @@ class TemplateEditor(QDialog):
         self.trigger_edit = QLineEdit()
         self.trigger_edit.setPlaceholderText(":trigger (for Espanso, optional)")
         form.addRow("Trigger:", self.trigger_edit)
+        
+        # Folder selection
+        self.folder_combo = QComboBox()
+        self._populate_folders()
+        form.addRow("Folder:", self.folder_combo)
         
         layout.addLayout(form)
         
@@ -211,6 +223,21 @@ class TemplateEditor(QDialog):
         del self.variables[row]
         self._refresh_var_list()
     
+    def _populate_folders(self):
+        """Populate the folder combobox."""
+        manager = get_template_manager()
+        self.folder_combo.clear()
+        self.folder_combo.addItem("(No folder)", "")  # Root level
+        
+        for folder in manager.list_folders():
+            self.folder_combo.addItem(f"📁 {folder}", folder)
+        
+        # Select initial folder
+        if self._initial_folder:
+            index = self.folder_combo.findData(self._initial_folder)
+            if index >= 0:
+                self.folder_combo.setCurrentIndex(index)
+    
     def _save(self):
         name = self.name_edit.text().strip()
         if not name:
@@ -221,6 +248,9 @@ class TemplateEditor(QDialog):
         if not content:
             QMessageBox.warning(self, "Error", "Template content is required.")
             return
+        
+        # Get selected folder
+        folder = self.folder_combo.currentData() or ""
         
         # Create or update template
         if self.template:
@@ -239,9 +269,9 @@ class TemplateEditor(QDialog):
                 variables=self.variables,
             )
         
-        # Save to disk
+        # Save to disk (with folder support)
         manager = get_template_manager()
-        if manager.save(template):
+        if manager.save_to_folder(template, folder):
             self.template_saved.emit(template)
             self.accept()
         else:

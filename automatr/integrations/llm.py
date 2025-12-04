@@ -65,16 +65,16 @@ class LLMClient:
     def generate(
         self,
         prompt: str,
-        max_tokens: int = 512,
-        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
         stream: bool = False,
     ) -> str:
         """Generate a completion for the given prompt.
         
         Args:
             prompt: The input prompt.
-            max_tokens: Maximum tokens to generate.
-            temperature: Sampling temperature.
+            max_tokens: Maximum tokens to generate. Uses config if None.
+            temperature: Sampling temperature. Uses config if None.
             stream: Whether to stream the response.
             
         Returns:
@@ -84,10 +84,15 @@ class LLMClient:
             ConnectionError: If server is not reachable.
             RuntimeError: If generation fails.
         """
+        # Read settings from config (allows live tuning)
+        config = get_config().llm
         payload = {
             "prompt": prompt,
-            "n_predict": max_tokens,
-            "temperature": temperature,
+            "n_predict": max_tokens if max_tokens is not None else config.max_tokens,
+            "temperature": temperature if temperature is not None else config.temperature,
+            "top_p": config.top_p,
+            "top_k": config.top_k,
+            "repeat_penalty": config.repeat_penalty,
             "stream": stream,
         }
         
@@ -118,23 +123,28 @@ class LLMClient:
     def generate_stream(
         self,
         prompt: str,
-        max_tokens: int = 512,
-        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
     ) -> Iterator[str]:
         """Generate a completion with streaming.
         
         Args:
             prompt: The input prompt.
-            max_tokens: Maximum tokens to generate.
-            temperature: Sampling temperature.
+            max_tokens: Maximum tokens to generate. Uses config if None.
+            temperature: Sampling temperature. Uses config if None.
             
         Yields:
             Generated text tokens.
         """
+        # Read settings from config (allows live tuning)
+        config = get_config().llm
         payload = {
             "prompt": prompt,
-            "n_predict": max_tokens,
-            "temperature": temperature,
+            "n_predict": max_tokens if max_tokens is not None else config.max_tokens,
+            "temperature": temperature if temperature is not None else config.temperature,
+            "top_p": config.top_p,
+            "top_k": config.top_k,
+            "repeat_penalty": config.repeat_penalty,
             "stream": True,
         }
         

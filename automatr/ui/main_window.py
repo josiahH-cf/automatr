@@ -6,11 +6,12 @@ from pathlib import Path
 from typing import Optional
 
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl
-from PyQt6.QtGui import QAction, QKeySequence, QDesktopServices
+from PyQt6.QtGui import QAction, QKeySequence, QDesktopServices, QShortcut, QWheelEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -24,6 +25,8 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QSplitter,
     QStatusBar,
+    QTreeWidget,
+    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
     QFormLayout,
@@ -33,12 +36,13 @@ from PyQt6.QtWidgets import (
 )
 
 from automatr import __version__
-from automatr.core.config import get_config
+from automatr.core.config import get_config, save_config
 from automatr.core.templates import Template, get_template_manager
 from automatr.integrations.llm import get_llm_client, get_llm_server
 from automatr.integrations.espanso import get_espanso_manager
 from automatr.ui.theme import get_theme_stylesheet
 from automatr.ui.template_editor import TemplateEditor
+from automatr.ui.llm_settings import LLMSettingsDialog
 
 
 class GenerationWorker(QThread):
@@ -137,6 +141,8 @@ class VariableFormWidget(QScrollArea):
         self.container = QWidget()
         self.layout = QFormLayout(self.container)
         self.layout.setContentsMargins(0, 0, 10, 0)
+        self.layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+        self.layout.setVerticalSpacing(12)
         self.setWidget(self.container)
         
         self.inputs: dict[str, QWidget] = {}
@@ -156,10 +162,15 @@ class VariableFormWidget(QScrollArea):
         if not template.variables:
             label = QLabel("No variables in this template.")
             label.setStyleSheet("color: #808080; font-style: italic;")
+            label.setWordWrap(True)
             self.layout.addRow(label)
             return
         
         for var in template.variables:
+            # Create label with word wrap
+            label = QLabel(f"{var.label}:")
+            label.setWordWrap(True)
+            
             if var.multiline:
                 widget = QPlainTextEdit()
                 widget.setPlaceholderText(var.default or f"Enter {var.label.lower()}...")
@@ -173,7 +184,7 @@ class VariableFormWidget(QScrollArea):
                     widget.setText(var.default)
             
             self.inputs[var.name] = widget
-            self.layout.addRow(f"{var.label}:", widget)
+            self.layout.addRow(label, widget)
     
     def get_values(self) -> dict[str, str]:
         """Get the current values from all input fields."""
@@ -268,6 +279,12 @@ class MainWindow(QMainWindow):
         refresh_action.triggered.connect(self._check_llm_status)
         llm_menu.addAction(refresh_action)
         
+        llm_menu.addSeparator()
+        
+        settings_action = QAction("S&ettings...", self)
+        settings_action.triggered.connect(self._show_llm_settings)
+        llm_menu.addAction(settings_action)
+        
         # Help menu
         help_menu = menubar.addMenu("&Help")
         
@@ -277,8 +294,59 @@ class MainWindow(QMainWindow):
     
     def _setup_shortcuts(self):
         """Set up additional keyboard shortcuts."""
-        # Generate shortcut
-        pass  # Ctrl+G is handled below via button
+        # Font scaling shortcuts
+        QShortcut(QKeySequence("Ctrl++"), self).activated.connect(self._increase_font)
+        QShortcut(QKeySequence("Ctrl+="), self).activated.connect(self._increase_font)
+        QShortcut(QKeySequence("Ctrl+-"), self).activated.connect(self._decrease_font)
+        QShortcut(QKeySequence("Ctrl+0"), self).activated.connect(self._reset_font)
+    
+    def wheelEvent(self, event: QWheelEvent):
+        """Handle mouse wheel events for font scaling with Ctrl."""
+        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            delta = event.angleDelta().y()
+            if delta > 0:
+                self._increase_font()
+            elif delta < 0:
+                self._decrease_font()
+            event.accept()
+        else:
+            super().wheelEvent(event)
+    
+    def _apply_font_size(self, size: int):
+        """Apply a new font size to the application."""
+        # Clamp to reasonable bounds
+        size = max(8, min(24, size))
+        
+        config = get_config()
+        config.ui.font_size = size
+        save_config(config)
+        
+        # Apply new stylesheet
+        stylesheet = get_theme_stylesheet(config.ui.theme, size)
+        QApplication.instance().setStyleSheet(stylesheet)
+        
+        # Update section labels (they have hardcoded sizes)
+        label_size = size + 1
+        label_style = f"font-weight: bold; font-size: {label_size}pt;"
+        for label in self.findChildren(QLabel):
+            if label.text() in ("Templates", "Variables", "Output"):
+                label.setStyleSheet(label_style)
+        
+        self.status_bar.showMessage(f"Font size: {size}pt", 2000)
+    
+    def _increase_font(self):
+        """Increase font size by 1pt."""
+        config = get_config()
+        self._apply_font_size(config.ui.font_size + 1)
+    
+    def _decrease_font(self):
+        """Decrease font size by 1pt."""
+        config = get_config()
+        self._apply_font_size(config.ui.font_size - 1)
+    
+    def _reset_font(self):
+        """Reset font size to default (13pt)."""
+        self._apply_font_size(13)
     
     def _sync_espanso(self):
         """Sync templates to Espanso."""
@@ -525,8 +593,16 @@ class MainWindow(QMainWindow):
         
         left_header = QHBoxLayout()
         left_label = QLabel("Templates")
-        left_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        config = get_config()
+        label_size = config.ui.font_size + 1
+        left_label.setStyleSheet(f"font-weight: bold; font-size: {label_size}pt;")
         left_header.addWidget(left_label)
+        
+        new_folder_btn = QPushButton("📁")
+        new_folder_btn.setMaximumWidth(30)
+        new_folder_btn.setToolTip("Create new folder")
+        new_folder_btn.clicked.connect(self._new_folder)
+        left_header.addWidget(new_folder_btn)
         
         new_btn = QPushButton("+")
         new_btn.setMaximumWidth(30)
@@ -536,10 +612,11 @@ class MainWindow(QMainWindow):
         
         left_layout.addLayout(left_header)
         
-        self.template_list = QListWidget()
-        self.template_list.itemClicked.connect(self._on_template_selected)
-        self.template_list.itemDoubleClicked.connect(self._edit_template)
-        left_layout.addWidget(self.template_list)
+        self.template_tree = QTreeWidget()
+        self.template_tree.setHeaderHidden(True)
+        self.template_tree.itemClicked.connect(self._on_tree_item_clicked)
+        self.template_tree.itemDoubleClicked.connect(self._on_tree_item_double_clicked)
+        left_layout.addWidget(self.template_tree)
         
         # Template action buttons
         template_actions = QHBoxLayout()
@@ -551,7 +628,7 @@ class MainWindow(QMainWindow):
         
         delete_btn = QPushButton("Delete")
         delete_btn.setObjectName("danger")
-        delete_btn.clicked.connect(self._delete_template)
+        delete_btn.clicked.connect(self._delete_selected)
         template_actions.addWidget(delete_btn)
         
         left_layout.addLayout(template_actions)
@@ -564,7 +641,7 @@ class MainWindow(QMainWindow):
         middle_layout.setContentsMargins(5, 10, 5, 10)
         
         middle_label = QLabel("Variables")
-        middle_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        middle_label.setStyleSheet(f"font-weight: bold; font-size: {label_size}pt;")
         middle_layout.addWidget(middle_label)
         
         self.variable_form = VariableFormWidget()
@@ -593,7 +670,7 @@ class MainWindow(QMainWindow):
         
         right_header = QHBoxLayout()
         right_label = QLabel("Output")
-        right_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        right_label.setStyleSheet(f"font-weight: bold; font-size: {label_size}pt;")
         right_header.addWidget(right_label)
         right_header.addStretch()
         
@@ -640,20 +717,113 @@ class MainWindow(QMainWindow):
         self.status_bar.addPermanentWidget(self.llm_status_label)
     
     def _load_templates(self):
-        """Load templates from disk."""
-        self.template_list.clear()
+        """Load templates from disk, grouped by folder."""
+        self.template_tree.clear()
         manager = get_template_manager()
         
-        for template in manager.list_all():
-            item = QListWidgetItem(template.name)
-            item.setData(Qt.ItemDataRole.UserRole, template)
-            if template.description:
-                item.setToolTip(template.description)
-            self.template_list.addItem(item)
+        # Get all templates and organize by folder
+        templates_by_folder: dict[str, list[Template]] = {"": []}  # "" = root/uncategorized
         
-        self.status_bar.showMessage(
-            f"Loaded {self.template_list.count()} templates", 3000
+        for folder in manager.list_folders():
+            templates_by_folder[folder] = []
+        
+        for template in manager.list_all():
+            folder = manager.get_template_folder(template)
+            if folder not in templates_by_folder:
+                templates_by_folder[folder] = []
+            templates_by_folder[folder].append(template)
+        
+        total_count = 0
+        
+        # Add uncategorized templates first (root level)
+        for template in sorted(templates_by_folder.get("", []), key=lambda t: t.name.lower()):
+            item = QTreeWidgetItem([template.name])
+            item.setData(0, Qt.ItemDataRole.UserRole, ("template", template))
+            if template.description:
+                item.setToolTip(0, template.description)
+            self.template_tree.addTopLevelItem(item)
+            total_count += 1
+        
+        # Add folders with their templates
+        for folder in sorted(templates_by_folder.keys()):
+            if folder == "":
+                continue  # Already handled uncategorized
+            
+            folder_item = QTreeWidgetItem([f"📁 {folder}"])
+            folder_item.setData(0, Qt.ItemDataRole.UserRole, ("folder", folder))
+            folder_item.setExpanded(True)
+            
+            folder_templates = templates_by_folder[folder]
+            if not folder_templates:
+                folder_item.setToolTip(0, "Empty folder")
+            
+            for template in sorted(folder_templates, key=lambda t: t.name.lower()):
+                child = QTreeWidgetItem([template.name])
+                child.setData(0, Qt.ItemDataRole.UserRole, ("template", template))
+                if template.description:
+                    child.setToolTip(0, template.description)
+                folder_item.addChild(child)
+                total_count += 1
+            
+            self.template_tree.addTopLevelItem(folder_item)
+        
+        self.status_bar.showMessage(f"Loaded {total_count} templates", 3000)
+    
+    def _on_tree_item_clicked(self, item: QTreeWidgetItem, column: int):
+        """Handle tree item single click."""
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if data and data[0] == "template":
+            template = data[1]
+            self.current_template = template
+            self.variable_form.set_template(template)
+            self.generate_btn.setEnabled(True)
+            self.render_template_btn.setEnabled(True)
+        else:
+            # Folder clicked - clear selection
+            self.current_template = None
+            self.variable_form.clear()
+            self.generate_btn.setEnabled(False)
+            self.render_template_btn.setEnabled(False)
+    
+    def _on_tree_item_double_clicked(self, item: QTreeWidgetItem, column: int):
+        """Handle tree item double click."""
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if data and data[0] == "template":
+            self._edit_template()
+    
+    def _new_folder(self):
+        """Create a new template folder."""
+        name, ok = QInputDialog.getText(
+            self,
+            "New Folder",
+            "Enter folder name:",
         )
+        if ok and name.strip():
+            manager = get_template_manager()
+            if manager.create_folder(name.strip()):
+                self._load_templates()
+                self.status_bar.showMessage(f"Created folder '{name.strip()}'", 3000)
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    f"Could not create folder '{name.strip()}'. It may already exist or contain invalid characters.",
+                )
+    
+    def _delete_selected(self):
+        """Delete the selected item (template or folder)."""
+        item = self.template_tree.currentItem()
+        if not item:
+            return
+        
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if not data:
+            return
+        
+        if data[0] == "template":
+            self._delete_template()
+        elif data[0] == "folder":
+            self._delete_folder(data[1])
     
     def _check_llm_status(self):
         """Check if the LLM server is running and update UI."""
@@ -671,14 +841,10 @@ class MainWindow(QMainWindow):
         self.start_server_action.setEnabled(not is_running)
         self.stop_server_action.setEnabled(is_running)
     
-    def _on_template_selected(self, item: QListWidgetItem):
-        """Handle template selection."""
-        template = item.data(Qt.ItemDataRole.UserRole)
-        if template:
-            self.current_template = template
-            self.variable_form.set_template(template)
-            self.generate_btn.setEnabled(True)
-            self.render_template_btn.setEnabled(True)
+    def _show_llm_settings(self):
+        """Show the LLM settings dialog."""
+        dialog = LLMSettingsDialog(self)
+        dialog.exec()
     
     def _new_template(self):
         """Create a new template."""
@@ -700,31 +866,92 @@ class MainWindow(QMainWindow):
         if not self.current_template:
             return
         
+        # Build confirmation message
+        message = f"Are you sure you want to delete '{self.current_template.name}'?"
+        if self.current_template.trigger:
+            message += f"\n\nThis template has an Espanso trigger ({self.current_template.trigger}) which will be removed."
+        
         reply = QMessageBox.question(
             self,
             "Delete Template",
-            f"Are you sure you want to delete '{self.current_template.name}'?",
+            message,
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         
         if reply == QMessageBox.StandardButton.Yes:
             manager = get_template_manager()
+            had_trigger = bool(self.current_template.trigger)
+            
             if manager.delete(self.current_template):
                 self.current_template = None
                 self.variable_form.clear()
                 self.generate_btn.setEnabled(False)
+                self.render_template_btn.setEnabled(False)
                 self._load_templates()
+                
+                # Auto-sync Espanso if enabled and template had a trigger
+                config = get_config()
+                if had_trigger and config.espanso.enabled and config.espanso.auto_sync:
+                    espanso = get_espanso_manager()
+                    if espanso.is_available():
+                        espanso.sync()
+                        self.status_bar.showMessage("Template deleted and Espanso synced", 3000)
+                    else:
+                        self.status_bar.showMessage("Template deleted", 3000)
+                else:
+                    self.status_bar.showMessage("Template deleted", 3000)
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Delete Failed",
+                    f"Failed to delete template '{self.current_template.name}'."
+                )
     
     def _on_template_saved(self, template: Template):
         """Handle template saved signal."""
         self._load_templates()
-        # Re-select the saved template
-        for i in range(self.template_list.count()):
-            item = self.template_list.item(i)
-            if item and item.text() == template.name:
-                self.template_list.setCurrentItem(item)
-                self._on_template_selected(item)
+        # Re-select the saved template in tree
+        self._select_template_in_tree(template.name)
+        
+        # Auto-sync Espanso if enabled and template has a trigger
+        config = get_config()
+        if template.trigger and config.espanso.enabled and config.espanso.auto_sync:
+            espanso = get_espanso_manager()
+            if espanso.is_available():
+                espanso.sync()
+                self.status_bar.showMessage(f"Template saved and Espanso synced", 3000)
+    
+    def _select_template_in_tree(self, template_name: str):
+        """Select a template in the tree by name."""
+        def find_in_item(item: QTreeWidgetItem) -> bool:
+            data = item.data(0, Qt.ItemDataRole.UserRole)
+            if data and data[0] == "template" and data[1].name == template_name:
+                self.template_tree.setCurrentItem(item)
+                self._on_tree_item_clicked(item, 0)
+                return True
+            for i in range(item.childCount()):
+                if find_in_item(item.child(i)):
+                    return True
+            return False
+        
+        for i in range(self.template_tree.topLevelItemCount()):
+            if find_in_item(self.template_tree.topLevelItem(i)):
                 break
+    
+    def _delete_folder(self, folder_name: str):
+        """Delete a template folder."""
+        manager = get_template_manager()
+        success, error_msg = manager.delete_folder(folder_name)
+        
+        if success:
+            self._load_templates()
+            self.status_bar.showMessage(f"Deleted folder '{folder_name}'", 3000)
+        else:
+            QMessageBox.warning(
+                self,
+                "Cannot Delete Folder",
+                error_msg,
+            )
     
     def _generate(self):
         """Generate output using the LLM."""
@@ -826,9 +1053,9 @@ def run_gui() -> int:
     app.setApplicationName("Automatr")
     app.setApplicationVersion(__version__)
     
-    # Apply theme
+    # Apply theme with font size
     config = get_config()
-    stylesheet = get_theme_stylesheet(config.ui.theme)
+    stylesheet = get_theme_stylesheet(config.ui.theme, config.ui.font_size)
     app.setStyleSheet(stylesheet)
     
     window = MainWindow()
