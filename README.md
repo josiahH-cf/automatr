@@ -9,7 +9,23 @@ Prompt templates + local LLM in one GUI. No cloud, no API keys.
 automatr        # launch GUI
 ```
 
-**Requirements:** Linux/WSL2, Python 3.10+, a `.gguf` model in `~/models/`
+**Requirements:** 
+- Linux, WSL2, or macOS
+- Python 3.10+
+- A `.gguf` model in `~/models/`
+- **macOS only:** [Homebrew](https://brew.sh) (`/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`)
+
+## Windows Hotkey (WSL2)
+
+Press **Ctrl+Shift+J** anywhere in Windows to launch Automatr.
+
+The installer automatically:
+- Creates an AutoHotkey script in `Documents/AutoHotkey/automatr.ahk`
+- Adds it to Windows Startup so it runs on boot
+
+**Requires:** [AutoHotkey v1.1](https://www.autohotkey.com/download/ahk-install.exe) (free, ~3MB)
+
+If AutoHotkey is already installed, just double-click `automatr.ahk` to enable the hotkey.
 
 ## What It Does
 
@@ -22,10 +38,18 @@ Templates sync to [Espanso](https://espanso.org) for system-wide text expansion.
 
 ## Files
 
+**Linux/WSL:**
 ```
 ~/.config/automatr/
 ├── config.json      # model path, port, theme
 └── templates/       # your prompt templates (JSON)
+```
+
+**macOS:**
+```
+~/Library/Application Support/automatr/
+├── config.json
+└── templates/
 ```
 
 ## License

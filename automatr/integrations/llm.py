@@ -193,12 +193,19 @@ class LLMServerManager:
             if path.exists() and os.access(path, os.X_OK):
                 return path
         
-        # 2. Check Automatr standard data directory
+        # 2. Check Automatr standard data directory (Linux/WSL)
         automatr_llama = (
             Path.home() / ".local" / "share" / "automatr" / "llama.cpp" / "build" / "bin" / binary_name
         )
         if automatr_llama.exists() and os.access(automatr_llama, os.X_OK):
             return automatr_llama
+        
+        # 2b. Check macOS data directory
+        automatr_llama_macos = (
+            Path.home() / "Library" / "Application Support" / "automatr" / "llama.cpp" / "build" / "bin" / binary_name
+        )
+        if automatr_llama_macos.exists() and os.access(automatr_llama_macos, os.X_OK):
+            return automatr_llama_macos
         
         # 3. Check PATH
         path_binary = shutil.which(binary_name)
@@ -210,6 +217,7 @@ class LLMServerManager:
             Path.home() / "llama.cpp" / "build" / "bin" / binary_name,
             Path.home() / ".local" / "bin" / binary_name,
             Path("/usr/local/bin") / binary_name,
+            Path("/opt/homebrew/bin") / binary_name,  # macOS Apple Silicon
         ]
         
         for path in candidates:

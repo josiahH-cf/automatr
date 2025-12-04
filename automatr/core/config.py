@@ -4,23 +4,59 @@ Handles loading/saving app configuration from a single JSON file.
 """
 
 import json
+import platform
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Optional
 
 
+def get_platform() -> str:
+    """Get the current platform.
+    
+    Returns:
+        'windows', 'linux', 'wsl2', or 'macos'
+    """
+    system = platform.system()
+    
+    if system == "Windows":
+        return "windows"
+    elif system == "Darwin":
+        return "macos"
+    elif system == "Linux":
+        # Check for WSL2
+        try:
+            with open("/proc/version", "r") as f:
+                version = f.read().lower()
+                if "microsoft" in version or "wsl" in version:
+                    return "wsl2"
+        except (OSError, IOError):
+            pass
+        return "linux"
+    return "unknown"
+
+
+def is_windows() -> bool:
+    """Check if running on native Windows."""
+    return get_platform() == "windows"
+
+
 def get_config_dir() -> Path:
     """Get the configuration directory path.
     
-    Uses XDG_CONFIG_HOME if set, otherwise ~/.config/automatr.
+    On macOS: ~/Library/Application Support/automatr
+    On Linux/WSL: XDG_CONFIG_HOME or ~/.config/automatr
     """
     import os
 
-    xdg_config = os.environ.get("XDG_CONFIG_HOME")
-    if xdg_config:
-        base = Path(xdg_config)
+    system = platform.system()
+    if system == "Darwin":
+        base = Path.home() / "Library" / "Application Support"
     else:
-        base = Path.home() / ".config"
+        xdg_config = os.environ.get("XDG_CONFIG_HOME")
+        if xdg_config:
+            base = Path(xdg_config)
+        else:
+            base = Path.home() / ".config"
     
     config_dir = base / "automatr"
     config_dir.mkdir(parents=True, exist_ok=True)

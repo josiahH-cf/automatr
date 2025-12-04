@@ -391,11 +391,18 @@ class MainWindow(QMainWindow):
         middle_layout.addWidget(self.variable_form)
         
         # Generate button
-        self.generate_btn = QPushButton("Generate (Ctrl+G)")
+        self.generate_btn = QPushButton("Render with AI (Ctrl+G)")
         self.generate_btn.setEnabled(False)
         self.generate_btn.setShortcut(QKeySequence("Ctrl+G"))
         self.generate_btn.clicked.connect(self._generate)
         middle_layout.addWidget(self.generate_btn)
+        
+        # Render template only button (no AI)
+        self.render_template_btn = QPushButton("Copy Template (Ctrl+Shift+G)")
+        self.render_template_btn.setEnabled(False)
+        self.render_template_btn.setShortcut(QKeySequence("Ctrl+Shift+G"))
+        self.render_template_btn.clicked.connect(self._render_template_only)
+        middle_layout.addWidget(self.render_template_btn)
         
         splitter.addWidget(middle_panel)
         
@@ -486,6 +493,7 @@ class MainWindow(QMainWindow):
             self.current_template = template
             self.variable_form.set_template(template)
             self.generate_btn.setEnabled(True)
+            self.render_template_btn.setEnabled(True)
     
     def _new_template(self):
         """Create a new template."""
@@ -574,6 +582,22 @@ class MainWindow(QMainWindow):
         self.worker.finished.connect(self._on_generation_finished)
         self.worker.error.connect(self._on_generation_error)
         self.worker.start()
+    
+    def _render_template_only(self):
+        """Render template with variable substitution only (no AI)."""
+        if not self.current_template:
+            return
+        
+        # Get variable values and render
+        values = self.variable_form.get_values()
+        rendered = self.current_template.render(values)
+        
+        # Display in output
+        self.output_text.setPlainText(rendered)
+        
+        # Auto-copy to clipboard
+        QApplication.clipboard().setText(rendered)
+        self.status_bar.showMessage("Template copied to clipboard", 3000)
     
     def _on_token_received(self, token: str):
         """Handle streaming token."""
