@@ -13,6 +13,53 @@ from automatr.core.config import get_config
 from automatr.core.templates import get_template_manager
 
 
+def _convert_to_espanso_placeholders(content: str, variables) -> str:
+    """Convert template placeholders {{var}} to Espanso placeholders.
+    
+    Form variables use {{var.value}} for accessing the value.
+    Date and other simple types use {{var}} directly.
+    """
+    updated = content
+    for var in variables:
+        name = var.name
+        var_type = getattr(var, 'type', 'form')
+        
+        if var_type == "form":
+            # Form variables with layout return objects; access via .value
+            updated = updated.replace(f"{{{{{name}}}}}", f"{{{{{name}.value}}}}")
+            updated = updated.replace(f"{{{{ {name} }}}}", f"{{{{{name}.value}}}}")
+        # Date and other simple types use {{var}} directly (no conversion needed)
+    return updated
+
+
+def _build_espanso_var_entry(var) -> dict:
+    """Build an Espanso variable entry from a Variable object."""
+    var_type = getattr(var, 'type', 'form')
+    params = getattr(var, 'params', {})
+    
+    if var_type == "date":
+        var_entry = {
+            "name": var.name,
+            "type": "date",
+        }
+        if params:
+            var_entry["params"] = params
+        return var_entry
+    
+    # Default: form type
+    var_entry = {
+        "name": var.name,
+        "type": "form",
+        "params": {
+            # Espanso v2 forms require [[value]] placeholder
+            "layout": f"{var.label}: [[value]]",
+        },
+    }
+    if var.default:
+        var_entry["params"]["default"] = var.default
+    return var_entry
+
+
 def get_espanso_config_dir() -> Optional[Path]:
     """Get the Espanso configuration directory.
     
@@ -52,10 +99,15 @@ def get_espanso_config_dir() -> Optional[Path]:
             )
             win_user = result.stdout.strip()
             if win_user:
-                win_path = Path(f"/mnt/c/Users/{win_user}/.espanso")
-                if win_path.exists():
-                    return win_path
-                # Try AppData path
+                # Prefer Espanso v2 default on Windows
+                config_path = Path(f"/mnt/c/Users/{win_user}/.config/espanso")
+                if config_path.exists():
+                    return config_path
+
+                legacy_path = Path(f"/mnt/c/Users/{win_user}/.espanso")
+                if legacy_path.exists():
+                    return legacy_path
+
                 appdata_path = Path(f"/mnt/c/Users/{win_user}/AppData/Roaming/espanso")
                 if appdata_path.exists():
                     return appdata_path
@@ -122,25 +174,18 @@ def sync_to_espanso() -> bool:
     matches = []
     
     for template in template_manager.iter_with_triggers():
-        # Build Espanso match entry
+        # Build Espanso match entry; use Espanso form placeholders in replacement
+        replace_text = _convert_to_espanso_placeholders(template.content, template.variables or [])
         match_entry = {
             "trigger": template.trigger,
-            "replace": template.content,
+            "replace": replace_text,
         }
         
         # Add variables if present
         if template.variables:
             match_entry["vars"] = []
             for var in template.variables:
-                var_entry = {
-                    "name": var.name,
-                    "type": "form",
-                    "params": {
-                        "layout": f"{var.label}: {{{{value}}}}",
-                    },
-                }
-                if var.default:
-                    var_entry["params"]["default"] = var.default
+                var_entry = _build_espanso_var_entry(var)
                 match_entry["vars"].append(var_entry)
         
         matches.append(match_entry)
@@ -157,6 +202,41 @@ def sync_to_espanso() -> bool:
             yaml.dump(content, f, default_flow_style=False, allow_unicode=True)
         
         print(f"Synced {len(matches)} triggers to {output_path}")
+        
+        # Check if running in WSL2 - file watcher may not detect changes
+        is_wsl2 = False
+        if platform.system() == "Linux":
+            try:
+                with open("/proc/version", "r") as f:
+                    version = f.read().lower()
+                    is_wsl2 = "microsoft" in version or "wsl" in version
+            except Exception:
+                pass
+        
+        if is_wsl2:
+            # WSL2 file writes don't trigger Windows file watcher; restart Espanso
+            try:
+                import subprocess
+                # Stop espanso first
+                subprocess.run(
+                    ["powershell.exe", "-NoProfile", "-Command", "cd C:/; espanso service stop"],
+                    capture_output=True,
+                    timeout=10,
+                )
+                # Start as detached process (avoids WSL console issues)
+                result = subprocess.run(
+                    ["powershell.exe", "-NoProfile", "-Command", 
+                     "cd C:/; Start-Process espanso -ArgumentList 'service','start' -WindowStyle Hidden"],
+                    capture_output=True,
+                    timeout=10,
+                )
+                if result.returncode == 0:
+                    print("Espanso restarted successfully.")
+                else:
+                    print("Note: Run 'espanso restart' from Windows PowerShell to reload triggers.")
+            except Exception:
+                print("Note: Run 'espanso restart' from Windows PowerShell to reload triggers.")
+        
         return True
     except Exception as e:
         print(f"Error writing Espanso file: {e}")
@@ -225,23 +305,16 @@ class EspansoManager:
         matches = []
         
         for template in template_manager.iter_with_triggers():
+            replace_text = _convert_to_espanso_placeholders(template.content, template.variables or [])
             match_entry = {
                 "trigger": template.trigger,
-                "replace": template.content,
+                "replace": replace_text,
             }
             
             if template.variables:
                 match_entry["vars"] = []
                 for var in template.variables:
-                    var_entry = {
-                        "name": var.name,
-                        "type": "form",
-                        "params": {
-                            "layout": f"{var.label}: {{{{value}}}}",
-                        },
-                    }
-                    if var.default:
-                        var_entry["params"]["default"] = var.default
+                    var_entry = _build_espanso_var_entry(var)
                     match_entry["vars"].append(var_entry)
             
             matches.append(match_entry)

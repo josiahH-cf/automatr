@@ -1,0 +1,6 @@
+{
+  "name": "Think Deeply",
+  "description": "Short prompt encouraging deep thinking and honest uncertainty",
+  "trigger": ":td",
+  "content": "Think Deeply. If you are unsure of the answer, respond with 'I don't know' or do not answer."
+}

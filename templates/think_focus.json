@@ -1,0 +1,6 @@
+{
+  "name": "Think Focus",
+  "description": "Prompt for deep thinking with follow-up questions",
+  "trigger": ":tf",
+  "content": "Think deeply, Don't hallucinate. If you don't know, say 'I don't know'. Ask follow up questions if clarification is needed"
+}

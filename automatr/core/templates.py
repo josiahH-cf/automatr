@@ -15,12 +15,23 @@ from automatr.core.config import get_templates_dir
 
 @dataclass
 class Variable:
-    """A variable/placeholder in a template."""
+    """A variable/placeholder in a template.
+    
+    Attributes:
+        name: Variable identifier used in content placeholders.
+        label: Display label for UI/forms.
+        default: Default value.
+        multiline: Whether to use multiline input (form type only).
+        type: Variable type - "form" (default), "date", etc.
+        params: Type-specific parameters (e.g., {"format": "%Y-%m-%d"} for date).
+    """
     
     name: str
     label: str = ""
     default: str = ""
     multiline: bool = False
+    type: str = "form"  # "form", "date"
+    params: Dict[str, Any] = field(default_factory=dict)
     
     def __post_init__(self):
         if not self.label:
@@ -33,16 +44,32 @@ class Variable:
             d["default"] = self.default
         if self.multiline:
             d["multiline"] = True
+        if self.type != "form":
+            d["type"] = self.type
+        if self.params:
+            d["params"] = self.params
         return d
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Variable":
         """Create from dictionary."""
+        label = data.get("label", "")
+        if label is None or isinstance(label, (dict, list)):
+            label = str(label) if label not in (None, {}) else ""
+        elif not isinstance(label, str):
+            label = str(label)
+        default = data.get("default", "")
+        if default is None or isinstance(default, (dict, list)):  # keep UI inputs from crashing
+            default = str(default) if default not in (None, {}) else ""
+        elif not isinstance(default, str):
+            default = str(default)
         return cls(
             name=data.get("name", ""),
-            label=data.get("label", ""),
-            default=data.get("default", ""),
+            label=label,
+            default=default,
             multiline=data.get("multiline", False),
+            type=data.get("type", "form"),
+            params=data.get("params", {}),
         )
 
 

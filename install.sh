@@ -224,11 +224,26 @@ setup_config() {
     mkdir -p "$CONFIG_DIR/templates"
     mkdir -p "$DATA_DIR"
     
-    # Copy example templates (preserving folder structure) if they don't exist
+    # Copy example templates while respecting existing user placement (folders)
     if [[ -d "$SCRIPT_DIR/templates" ]]; then
-        # Use cp -rn to recursively copy without overwriting existing files
-        cp -rn "$SCRIPT_DIR/templates/"* "$CONFIG_DIR/templates/" 2>/dev/null || true
-        log_info "Synced templates from repository"
+        python3 - <<PY
+from pathlib import Path
+import shutil
+
+src = Path(r"""$SCRIPT_DIR/templates""")
+dst = Path(r"""$CONFIG_DIR/templates""")
+dst.mkdir(parents=True, exist_ok=True)
+
+for src_file in src.rglob("*.json"):
+    # Skip if a template with the same filename already exists anywhere under dst
+    if any(p.name == src_file.name for p in dst.rglob("*.json")):
+        continue
+    target = dst / src_file.relative_to(src)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src_file, target)
+
+print("Synced templates from repository")
+PY
     fi
     
     # Create default config if it doesn't exist
@@ -273,7 +288,11 @@ setup_espanso() {
         # Try to find Windows username
         WIN_USER=$(cmd.exe /c "echo %USERNAME%" 2>/dev/null | tr -d '\r\n' || echo "")
         if [[ -n "$WIN_USER" ]]; then
-            ESPANSO_CONFIG="/mnt/c/Users/$WIN_USER/.espanso"
+            # Prefer Espanso v2 default on Windows
+            ESPANSO_CONFIG="/mnt/c/Users/$WIN_USER/.config/espanso"
+            if [[ ! -d "$ESPANSO_CONFIG" ]]; then
+                ESPANSO_CONFIG="/mnt/c/Users/$WIN_USER/.espanso"
+            fi
             if [[ ! -d "$ESPANSO_CONFIG" ]]; then
                 ESPANSO_CONFIG="/mnt/c/Users/$WIN_USER/AppData/Roaming/espanso"
             fi
@@ -288,10 +307,42 @@ setup_espanso() {
     
     if [[ -d "$ESPANSO_CONFIG" ]]; then
         log_success "Found Espanso config: $ESPANSO_CONFIG"
+
+        # Persist detected path into automatr config if not already set
+        if [[ -f "$CONFIG_DIR/config.json" ]]; then
+            python3 - <<PY
+import json
+from pathlib import Path
+
+config_path = Path(r"""$CONFIG_DIR/config.json""")
+data = json.loads(config_path.read_text()) if config_path.exists() else {}
+esp = data.get("espanso", {})
+
+if not esp.get("config_path"):
+    esp["config_path"] = r"""$ESPANSO_CONFIG"""
+    data["espanso"] = esp
+    config_path.write_text(json.dumps(data, indent=2))
+    print(f"Set espanso.config_path to {esp['config_path']}")
+PY
+        fi
         
         # Sync templates
         source "$VENV_DIR/bin/activate"
-        automatr --sync || log_warn "Failed to sync templates to Espanso"
+        if automatr --sync; then
+            if $IS_WSL2; then
+                # WSL2 writes don't trigger Windows file watcher; restart Espanso
+                log_info "Restarting Espanso to load triggers..."
+                powershell.exe -NoProfile -Command "cd C:/; espanso service stop" &>/dev/null
+                if powershell.exe -NoProfile -Command "cd C:/; Start-Process espanso -ArgumentList 'service','start' -WindowStyle Hidden" &>/dev/null; then
+                    sleep 1
+                    log_success "Espanso restarted successfully"
+                else
+                    log_warn "Could not restart Espanso. Run 'espanso restart' from Windows PowerShell"
+                fi
+            fi
+        else
+            log_warn "Failed to sync templates to Espanso"
+        fi
     else
         log_warn "Espanso config not found. Run 'automatr --sync' after installing Espanso."
     fi

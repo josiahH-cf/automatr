@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl
-from PyQt6.QtGui import QAction, QKeySequence, QDesktopServices, QShortcut, QWheelEvent
+from PyQt6.QtGui import QAction, QKeySequence, QDesktopServices, QShortcut, QWheelEvent, QFont
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -170,18 +170,20 @@ class VariableFormWidget(QScrollArea):
             # Create label with word wrap
             label = QLabel(f"{var.label}:")
             label.setWordWrap(True)
+
+            default_value = var.default if isinstance(var.default, str) else str(var.default) if var.default is not None else ""
             
             if var.multiline:
                 widget = QPlainTextEdit()
-                widget.setPlaceholderText(var.default or f"Enter {var.label.lower()}...")
+                widget.setPlaceholderText(default_value or f"Enter {var.label.lower()}...")
                 widget.setMaximumHeight(100)
-                if var.default:
-                    widget.setPlainText(var.default)
+                if default_value:
+                    widget.setPlainText(default_value)
             else:
                 widget = QLineEdit()
-                widget.setPlaceholderText(var.default or f"Enter {var.label.lower()}...")
-                if var.default:
-                    widget.setText(var.default)
+                widget.setPlaceholderText(default_value or f"Enter {var.label.lower()}...")
+                if default_value:
+                    widget.setText(default_value)
             
             self.inputs[var.name] = widget
             self.layout.addRow(label, widget)
@@ -323,7 +325,12 @@ class MainWindow(QMainWindow):
         
         # Apply new stylesheet
         stylesheet = get_theme_stylesheet(config.ui.theme, size)
-        QApplication.instance().setStyleSheet(stylesheet)
+        app = QApplication.instance()
+        if app:
+            app.setStyleSheet(stylesheet)
+            # Keep widget fonts in sync with the base size to avoid mixed font scaling
+            base_font = QFont(app.font().family(), size)
+            app.setFont(base_font)
         
         # Update section labels (they have hardcoded sizes)
         label_size = size + 1
@@ -894,8 +901,16 @@ class MainWindow(QMainWindow):
                 if had_trigger and config.espanso.enabled and config.espanso.auto_sync:
                     espanso = get_espanso_manager()
                     if espanso.is_available():
-                        espanso.sync()
-                        self.status_bar.showMessage("Template deleted and Espanso synced", 3000)
+                        try:
+                            espanso.sync()
+                            self.status_bar.showMessage("Template deleted and Espanso synced", 3000)
+                        except Exception as e:
+                            QMessageBox.warning(
+                                self,
+                                "Espanso Sync Failed",
+                                f"Template deleted, but Espanso sync failed:\n{e}",
+                            )
+                            self.status_bar.showMessage("Template deleted (Espanso sync failed)", 3000)
                     else:
                         self.status_bar.showMessage("Template deleted", 3000)
                 else:
@@ -918,8 +933,16 @@ class MainWindow(QMainWindow):
         if template.trigger and config.espanso.enabled and config.espanso.auto_sync:
             espanso = get_espanso_manager()
             if espanso.is_available():
-                espanso.sync()
-                self.status_bar.showMessage(f"Template saved and Espanso synced", 3000)
+                try:
+                    espanso.sync()
+                    self.status_bar.showMessage(f"Template saved and Espanso synced", 3000)
+                except Exception as e:
+                    QMessageBox.warning(
+                        self,
+                        "Espanso Sync Failed",
+                        f"Template saved, but Espanso sync failed:\n{e}",
+                    )
+                    self.status_bar.showMessage("Template saved (Espanso sync failed)", 3000)
     
     def _select_template_in_tree(self, template_name: str):
         """Select a template in the tree by name."""
@@ -1057,6 +1080,7 @@ def run_gui() -> int:
     config = get_config()
     stylesheet = get_theme_stylesheet(config.ui.theme, config.ui.font_size)
     app.setStyleSheet(stylesheet)
+    app.setFont(QFont(app.font().family(), config.ui.font_size))
     
     window = MainWindow()
     window.show()
