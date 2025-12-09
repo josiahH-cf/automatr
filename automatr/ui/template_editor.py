@@ -86,10 +86,11 @@ class TemplateEditor(QDialog):
     
     template_saved = pyqtSignal(Template)
     
-    def __init__(self, template: Optional[Template] = None, parent=None):
+    def __init__(self, template: Optional[Template] = None, parent=None, last_folder: str = ""):
         super().__init__(parent)
         self.template = template
         self.variables: list[Variable] = list(template.variables) if template else []
+        self._last_folder = last_folder
         
         # Get initial folder for existing templates
         self._initial_folder = ""
@@ -232,9 +233,10 @@ class TemplateEditor(QDialog):
         for folder in manager.list_folders():
             self.folder_combo.addItem(f"📁 {folder}", folder)
         
-        # Select initial folder
-        if self._initial_folder:
-            index = self.folder_combo.findData(self._initial_folder)
+        # Select initial folder (existing template) or last used folder (new template)
+        folder_to_select = self._initial_folder or self._last_folder
+        if folder_to_select:
+            index = self.folder_combo.findData(folder_to_select)
             if index >= 0:
                 self.folder_combo.setCurrentIndex(index)
     

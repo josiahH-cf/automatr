@@ -1,12 +1,13 @@
 """Main window for Automatr GUI."""
 
+import base64
 import shutil
 import sys
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl
-from PyQt6.QtGui import QAction, QKeySequence, QDesktopServices, QShortcut, QWheelEvent, QFont
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QByteArray
+from PyQt6.QtGui import QAction, QKeySequence, QDesktopServices, QShortcut, QWheelEvent, QFont, QCloseEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -226,6 +227,7 @@ class MainWindow(QMainWindow):
         self._setup_status_bar()
         self._setup_shortcuts()
         self._load_templates()
+        self._restore_state()
         self._check_llm_status()
     
     def _setup_menu_bar(self):
@@ -475,6 +477,25 @@ class MainWindow(QMainWindow):
         QDesktopServices.openUrl(url)
         self.status_bar.showMessage(f"Opened http://127.0.0.1:{port} in browser", 3000)
 
+    def _smart_server_action(self):
+        """Smart button action: start server if not running, open browser if running."""
+        server = get_llm_server()
+        
+        if server.is_running():
+            self._launch_web_server()
+        else:
+            self.status_bar.showMessage("Starting server...", 0)
+            QApplication.processEvents()
+            
+            success, message = server.start()
+            
+            if success:
+                self.status_bar.showMessage("Server started", 3000)
+            else:
+                self.status_bar.showMessage(f"Failed to start server: {message}", 5000)
+            
+            self._check_llm_status()
+
     def _add_model_from_file(self):
         """Add a model from a local GGUF file."""
         file_path, _ = QFileDialog.getOpenFileName(
@@ -591,7 +612,7 @@ class MainWindow(QMainWindow):
         main_layout = QHBoxLayout(central)
         main_layout.setContentsMargins(0, 0, 0, 0)
         
-        splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
         
         # Left panel: Template list
         left_panel = QWidget()
@@ -640,7 +661,7 @@ class MainWindow(QMainWindow):
         
         left_layout.addLayout(template_actions)
         
-        splitter.addWidget(left_panel)
+        self.splitter.addWidget(left_panel)
         
         # Middle panel: Variables
         middle_panel = QWidget()
@@ -668,7 +689,7 @@ class MainWindow(QMainWindow):
         self.render_template_btn.clicked.connect(self._render_template_only)
         middle_layout.addWidget(self.render_template_btn)
         
-        splitter.addWidget(middle_panel)
+        self.splitter.addWidget(middle_panel)
         
         # Right panel: Output
         right_panel = QWidget()
@@ -703,25 +724,95 @@ class MainWindow(QMainWindow):
         )
         right_layout.addWidget(self.output_text)
         
-        splitter.addWidget(right_panel)
+        self.splitter.addWidget(right_panel)
         
-        # Set initial splitter sizes
-        splitter.setSizes([200, 300, 400])
+        # Set initial splitter sizes from config
+        config = get_config()
+        self.splitter.setSizes(config.ui.splitter_sizes)
         
-        main_layout.addWidget(splitter)
+        main_layout.addWidget(self.splitter)
     
     def _setup_status_bar(self):
         """Set up the status bar."""
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
 
-        self.launch_server_btn = QPushButton("Launch Web Server")
-        self.launch_server_btn.setObjectName("secondary")
-        self.launch_server_btn.clicked.connect(self._launch_web_server)
-        self.status_bar.addWidget(self.launch_server_btn)
+        self.server_btn = QPushButton("Start Server")
+        self.server_btn.setObjectName("secondary")
+        self.server_btn.clicked.connect(self._smart_server_action)
+        self.status_bar.addWidget(self.server_btn)
+
+        self.stop_server_btn = QPushButton("Stop Server")
+        self.stop_server_btn.setObjectName("secondary")
+        self.stop_server_btn.clicked.connect(self._stop_server)
+        self.stop_server_btn.setEnabled(False)
+        self.status_bar.addWidget(self.stop_server_btn)
 
         self.llm_status_label = QLabel("LLM: Checking...")
         self.status_bar.addPermanentWidget(self.llm_status_label)
+    
+    def _restore_state(self):
+        """Restore window and app state from config."""
+        config = get_config()
+        
+        # Restore window geometry
+        if config.ui.window_geometry:
+            try:
+                geometry_bytes = base64.b64decode(config.ui.window_geometry)
+                self.restoreGeometry(QByteArray(geometry_bytes))
+            except Exception:
+                pass  # Fall back to default geometry
+        
+        # Restore maximized state
+        if config.ui.window_maximized:
+            self.setWindowState(Qt.WindowState.WindowMaximized)
+        
+        # Restore expanded folders in template tree
+        if config.ui.expanded_folders:
+            for i in range(self.template_tree.topLevelItemCount()):
+                item = self.template_tree.topLevelItem(i)
+                data = item.data(0, Qt.ItemDataRole.UserRole)
+                if data and data[0] == "folder" and data[1] in config.ui.expanded_folders:
+                    item.setExpanded(True)
+        
+        # Restore last selected template
+        if config.ui.last_template:
+            self._select_template_in_tree(config.ui.last_template)
+    
+    def closeEvent(self, event: QCloseEvent):
+        """Save window and app state when closing."""
+        config = get_config()
+        
+        # Save window geometry (handles position and size)
+        geometry_bytes = bytes(self.saveGeometry())
+        config.ui.window_geometry = base64.b64encode(geometry_bytes).decode('ascii')
+        
+        # Save maximized state
+        config.ui.window_maximized = self.isMaximized()
+        
+        # Save window size (for backwards compatibility)
+        if not self.isMaximized():
+            config.ui.window_width = self.width()
+            config.ui.window_height = self.height()
+        
+        # Save splitter sizes
+        config.ui.splitter_sizes = self.splitter.sizes()
+        
+        # Save current template
+        if self.current_template:
+            config.ui.last_template = self.current_template.name
+        
+        # Save expanded folders
+        expanded = []
+        for i in range(self.template_tree.topLevelItemCount()):
+            item = self.template_tree.topLevelItem(i)
+            data = item.data(0, Qt.ItemDataRole.UserRole)
+            if data and data[0] == "folder" and item.isExpanded():
+                expanded.append(data[1])
+        config.ui.expanded_folders = expanded
+        
+        save_config(config)
+        event.accept()
     
     def _load_templates(self):
         """Load templates from disk, grouped by folder."""
@@ -840,9 +931,17 @@ class MainWindow(QMainWindow):
         if is_running:
             self.llm_status_label.setText("LLM: Connected")
             self.llm_status_label.setStyleSheet("color: #4ec9b0;")
+            self.server_btn.setText("Open Server")
+            self.server_btn.setStyleSheet("background-color: #4ec9b0; color: #1e1e1e;")
+            self.stop_server_btn.setEnabled(True)
+            self.stop_server_btn.setStyleSheet("background-color: #c42b1c; color: #ffffff;")
         else:
             self.llm_status_label.setText("LLM: Not Running")
             self.llm_status_label.setStyleSheet("color: #f48771;")
+            self.server_btn.setText("Start Server")
+            self.server_btn.setStyleSheet("")
+            self.stop_server_btn.setEnabled(False)
+            self.stop_server_btn.setStyleSheet("")
         
         # Update menu actions
         self.start_server_action.setEnabled(not is_running)
@@ -855,9 +954,13 @@ class MainWindow(QMainWindow):
     
     def _new_template(self):
         """Create a new template."""
-        dialog = TemplateEditor(parent=self)
+        config = get_config()
+        dialog = TemplateEditor(parent=self, last_folder=config.ui.last_editor_folder)
         dialog.template_saved.connect(self._on_template_saved)
         dialog.exec()
+        # Save the last used folder
+        config.ui.last_editor_folder = dialog.folder_combo.currentData() or ""
+        save_config(config)
     
     def _edit_template(self):
         """Edit the selected template."""
