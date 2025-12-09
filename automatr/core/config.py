@@ -102,6 +102,20 @@ class UIConfig:
     window_width: int = 900
     window_height: int = 700
     font_size: int = 13  # Base font size for text content
+    
+    # Window state persistence
+    window_x: int = -1  # -1 = center on screen
+    window_y: int = -1  # -1 = center on screen
+    window_maximized: bool = False
+    window_geometry: str = ""  # Base64 encoded QByteArray
+    
+    # Layout persistence
+    splitter_sizes: list = field(default_factory=lambda: [200, 300, 400])
+    
+    # Selection persistence
+    last_template: str = ""
+    expanded_folders: list = field(default_factory=list)
+    last_editor_folder: str = ""
 
 
 @dataclass
