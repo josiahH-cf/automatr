@@ -1,5 +1,6 @@
 {
   "name": "Code Review",
+  "content": "Please review the following {{language}} code:\n\n```{{language}}\n{{code}}\n```\n\nProvide feedback on:\n1. Correctness\n2. Code style and best practices\n3. Potential improvements\n4. Any bugs or issues",
   "description": "Ask an LLM to review code for correctness, style, and improvements",
   "trigger": ":review",
   "variables": [
@@ -13,6 +14,5 @@
       "label": "Code to Review",
       "multiline": true
     }
-  ],
-  "content": "Please review the following {{language}} code:\n\n```{{language}}\n{{code}}\n```\n\nProvide feedback on:\n1. Correctness\n2. Code style and best practices\n3. Potential improvements\n4. Any bugs or issues"
+  ]
 }

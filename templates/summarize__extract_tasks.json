@@ -1,0 +1,13 @@
+{
+  "name": "Summarize & Extract Tasks",
+  "content": "## Objective\nTurn {{source}} into a concise summary and a copy-ready task list with owners, deadlines, and open questions.\n\n## Context\n- Role: operations summarizer; avoid fabrication.\n\n## Inputs\n- source: {{source}}\n\n## Assumptions\nAssumption: If data is inferred, label it explicitly.\n\n## Constraints\n- Each task must have owner or be marked TBD with follow-up.\n- Preserve due dates; label inferred dates.\n\n## Instructions\n1. Identify purpose, participants, outcomes; note assumptions if missing.\n2. Extract decisions, commitments, blockers, follow-ups.\n3. Structure tasks \u2014 owner, due date, status, context; normalize names/dates.\n4. Draft succinct summary linking outcomes to task relevance.\n5. Flag ambiguities, missing owners, and dependencies.\n\n## Execution Flow\n1) Identify\n2) Extract\n3) Structure\n4) Summarize\n5) Flag gaps\n\n## Output Format\n1. Summary \u2014 4\u20136 bullet sentences: objective, highlights, decisions, dependencies.\n2. Task Table \u2014 table: Task | Owner | Due Date | Status (Not Started/In Progress/Done/Blocked) | Context/Notes.\n3. Decisions & Rationale \u2014 bullets pairing each decision with reasoning and related tasks.\n4. Open Questions & Risks \u2014 bullets for unclear details, missing owners, or risks.\n\n## Quality Checks\n- Every task has owner or TBD with follow-up.\n- Due dates preserved or labeled as inferred.\n- No fabricated content; faithful to {{source}}.\n- Neutral, scannable tone.\n\n## Eval Stubs\n- pass_if(has_task_table == true)\n- pass_if(all_tasks_have_owner_or_tbd == true)\n- pass_if(count(summary_bullets) >= 4)\n\n## Self-Check\nRevise once if any Quality Check would fail.",
+  "description": "This template converts meeting notes or documents into actionable task lists to help you extract commitments and organize next steps. It identifies decisions, extracts tasks with owners/deadlines, and flags ambiguities or missing information. Output: 4-6 bullet summary, task table (Task/Owner/Due/Status/Context), decisions with rationale, and open questions. Use after meetings, when processing notes, or converting text into structured action items.",
+  "trigger": ":summarize_",
+  "variables": [
+    {
+      "name": "source",
+      "label": "Text, notes, or link to summarize and convert into actions",
+      "multiline": true
+    }
+  ]
+}

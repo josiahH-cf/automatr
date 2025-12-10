@@ -1,0 +1,13 @@
+{
+  "name": "Quick Debugging Partner",
+  "content": "## Objective\nDiagnose likely root causes quickly and propose the smallest safe fix with validation steps.\n\n## Context\n\n## Inputs\n- issue: {{issue}}\n\n## Assumptions\nAssumption: Ask at most one clarifying question if it would change the plan.\nAssumption: No external browsing; rely on provided inputs.\n\n## Constraints\n- \u2264 1 clarifying question (\u226425 words).\n- Prefer smallest safe change; call out risks if confidence < 0.8.\n\n## Instructions\n1. Snapshot \u2014 Summarize error and affected surface; note assumptions.\n2. Hypotheses \u2014 2\u20134 likely causes ordered by probability; map to failure patterns.\n3. Evidence & Tests \u2014 For each hypothesis, list decisive verification steps.\n4. Fix Plan \u2014 Recommend minimal fix; include alternatives if confidence < 0.8.\n5. Validation & Safeguards \u2014 Tests/monitoring to confirm and prevent regression.\n\n## Execution Flow\n1) Snapshot\n2) Hypotheses\n3) Evidence & Tests\n4) Fix Plan\n5) Validation & Safeguards\n\n## Output Format\n- Snapshot: 2\u20133 sentences; note if a question was asked.\n- Clarifying Question: `Question: \u2026` or `Question: not asked`.\n- Likely Root Causes: ranked list with confidence %, evidence, verification steps.\n- Fix Plan: bullets with file paths/commands.\n- Validation & Follow-up: checklist for tests/monitoring/rollback.\n\n## Quality Checks\n- \u2264 1 clarifying question; assumptions logged.\n- Hypotheses cite evidence and decisive verification.\n- Fix plan is smallest safe change with risks/alternatives if needed.\n- Validation steps are executable and guard against regressions.\n\n## Eval Stubs\n- pass_if(clarifying_questions_used <= 1)\n- pass_if(hypothesis_count >= 2 && hypothesis_count <= 4)\n- pass_if(has_validation == true)\n\n## Self-Check\nIf any Quality Check would fail, revise once before returning.",
+  "description": "This template diagnoses bugs and proposes minimal fixes to help you resolve issues quickly without over-engineering. It ranks likely root causes by probability, maps to failure patterns, and recommends the smallest safe change with validation steps. Output: 2-4 ranked hypotheses with confidence percentages, minimal fix plan with file paths/commands, and validation checklist. Use when encountering errors, failing tests, or unexpected behavior requiring rapid diagnosis.",
+  "trigger": ":quick_debu",
+  "variables": [
+    {
+      "name": "issue",
+      "label": "Error message, failing test output, or bug description (paste stack traces, logs, environment clues)",
+      "multiline": true
+    }
+  ]
+}

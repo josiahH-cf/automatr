@@ -1,5 +1,6 @@
 {
   "name": "Explain Code",
+  "content": "Please explain the following code in a {{detail_level}} way:\n\n```\n{{code}}\n```\n\nInclude:\n- What the code does overall\n- How each part works\n- Any important concepts used",
   "description": "Get an explanation of how code works",
   "trigger": ":explain",
   "variables": [
@@ -13,6 +14,5 @@
       "label": "Detail Level",
       "default": "beginner-friendly"
     }
-  ],
-  "content": "Please explain the following code in a {{detail_level}} way:\n\n```\n{{code}}\n```\n\nInclude:\n- What the code does overall\n- How each part works\n- Any important concepts used"
+  ]
 }

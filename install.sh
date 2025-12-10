@@ -234,15 +234,14 @@ src = Path(r"""$SCRIPT_DIR/templates""")
 dst = Path(r"""$CONFIG_DIR/templates""")
 dst.mkdir(parents=True, exist_ok=True)
 
+# Copy all templates from repo, overwriting any existing files with same name
+# This ensures clean baseline templates are always used
 for src_file in src.rglob("*.json"):
-    # Skip if a template with the same filename already exists anywhere under dst
-    if any(p.name == src_file.name for p in dst.rglob("*.json")):
-        continue
     target = dst / src_file.relative_to(src)
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src_file, target)
 
-print("Synced templates from repository")
+print("Synced templates from repository (overwrites enabled)")
 PY
     fi
     

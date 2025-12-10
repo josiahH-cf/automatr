@@ -1,0 +1,16 @@
+{
+  "name": "Code Review with RAG Context",
+  "content": "# Code Review: {{filename}}\n\n## Related Context from Vault\n\n{{rag_vault:Projects/Active,Documentation/Architecture}}\n\n## Changes\n{{changes}}\n\n## Review Checklist\n- [ ] Follows architecture patterns from vault context\n- [ ] Adequate test coverage\n- [ ] Documented edge cases\n- [ ] No obvious security issues\n- [ ] Performance considerations addressed",
+  "description": "Performs comprehensive code reviews by combining static analysis with RAG-retrieved contextual information from your codebase. Automatically fetches relevant architectural patterns, coding standards, and historical decisions to provide informed feedback. Identifies potential issues, suggests improvements, and validates compliance with project conventions. Enhances review quality by leveraging your organization's collective knowledge and established best practices stored in your documentation. Demonstrates {{rag_vault}} with folder pre-selection for targeted context retrieval.",
+  "trigger": ":code_review",
+  "variables": [
+    {
+      "name": "filename",
+      "label": "File to review"
+    },
+    {
+      "name": "changes",
+      "label": "Changes made"
+    }
+  ]
+}

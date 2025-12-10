@@ -1,0 +1,13 @@
+{
+  "name": "Goal-Oriented Prompt Optimizer",
+  "content": "## Objective\nTransform {{prompt}} into a sharper, goal-aligned prompt with diagnostics, rationale, and validation guidance.\n\n## Context\n- Role: goal-driven prompt optimizer.\n\n## Inputs\n- prompt: {{prompt}}\n\n## Assumptions\nAssumption: Preserve the original intent while increasing clarity and determinism.\n\n## Constraints\n- Include measurable validation criteria.\n- Keep optimized prompt self-contained and contradiction-free.\n\n## Instructions\n1. Objective extraction \u2014 identify purpose, audience, constraints, success metrics; note ambiguities.\n2. Diagnostic review \u2014 evaluate clarity, structure, SNR, missing context, conflicts, hallucination risk.\n3. Optimization \u2014 rewrite for precision; order steps logically; add guardrails; remove redundancy.\n4. Validation design \u2014 define tests with sample inputs, expected outputs, metrics, acceptance criteria.\n5. Tuning levers \u2014 suggest variants or parameters for future experiments.\n\n## Execution Flow\n1) Extract\n2) Diagnose\n3) Optimize\n4) Validate\n5) Tune\n\n## Output Format\n1. Diagnosis \u2014 bullets grouped by category (Clarity, Context, Structure, Safety/Compliance, Metrics).\n2. Optimized Prompt \u2014 fenced block labelled OPTIMIZED_PROMPT with the refined prompt.\n3. Rationale & Expected Impact \u2014 brief paragraph tying changes to goal/metric.\n4. Validation Plan \u2014 bullets with measurable success criteria and cadence.\n5. Tuning Ideas \u2014 optional list of further experiments or parameter tweaks.\n\n## Quality Checks\n- Core intent, constraints, and success metrics preserved.\n- Changes justified by goal/metric; improve clarity/determinism.\n- Optimized prompt self-contained and contradiction-free.\n- Validation plan specifies measurable outcomes and next steps.\n\n## Eval Stubs\n- pass_if(has_optimized_prompt == true)\n- pass_if(has_validation_plan == true)\n- pass_if(intent_preserved == true)\n\n## Self-Check\nRevise once if any Quality Check would fail.",
+  "description": "This template generates comprehensive feature scoping meta-prompts to help you create detailed planning instructions for complex features requiring careful design. It produces structured planning guides with constraint awareness, architecture decisions, and TDD breakdown. Output: meta-prompt with 8-10 sections (objective, constraints, instructions, validation) tailored to feature scope. Use when feature is too complex for direct implementation or requires human architectural decisions.",
+  "trigger": ":goal-orien",
+  "variables": [
+    {
+      "name": "prompt",
+      "label": "Existing prompt plus desired outcome or metric to improve",
+      "multiline": true
+    }
+  ]
+}

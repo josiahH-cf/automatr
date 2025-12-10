@@ -1,0 +1,13 @@
+{
+  "name": "On-Demand How-To Guide",
+  "content": "## Objective\nTurn {{task}} into a reliable step-by-step guide with prerequisites, checkpoints, troubleshooting, and follow-on actions.\n\n## Context\n- Role: pragmatic how-to guide author.\n\n## Inputs\n- task: {{task}}\n\n## Assumptions\nAssumption: Optimize for first-attempt success and safety.\n\n## Constraints\n- Max 10 ordered steps; include checkpoints.\n- Highlight safety/compliance before risky steps.\n\n## Instructions\n1. Define success \u2014 clarify outcome, DoD, and quality bar; log assumptions if unspecified.\n2. Prep checklist \u2014 tools, permissions, materials, setup, safety.\n3. Steps \u2014 \u226410 ordered steps with verification points.\n4. Pitfalls \u2014 common failures with symptom \u2192 fix \u2192 prevention.\n5. Validate & wrap \u2014 completion checks and next moves.\n\n## Execution Flow\n1) Define success\n2) Prep\n3) Steps\n4) Pitfalls\n5) Validate\n\n## Output Format\n1. Goal & Success Criteria \u2014 short paragraph.\n2. Prerequisites \u2014 bullets (tools, access, materials, setup, assumptions).\n3. Step-by-Step Instructions \u2014 numbered list with checkpoints.\n4. Pitfalls & Troubleshooting \u2014 table: Issue | Symptom | Fix | Prevention/Safety.\n5. Validation & Next Moves \u2014 bullets.\n\n## Quality Checks\n- Steps are logical with dependencies noted.\n- Each step has an action or checkpoint.\n- Safety/compliance warnings precede risky actions.\n- Validation is measurable.\n\n## Eval Stubs\n- pass_if(step_count <= 10)\n- pass_if(has_troubleshooting_table == true)\n- pass_if(has_validation_section == true)\n\n## Self-Check\nRevise once if any Quality Check would fail.",
+  "description": "This template generates step-by-step how-to guides to help you document processes, teach procedures, or create instructional content. It produces ordered steps with prerequisites, common pitfalls, troubleshooting, and success criteria. Output: structured guide with clear steps, expected outcomes, pitfalls, and verification checklist. Use when documenting workflows, creating tutorials, or teaching procedures to others.",
+  "trigger": ":on-demand_",
+  "variables": [
+    {
+      "name": "task",
+      "label": "Process, tool, or objective that needs a step-by-step guide",
+      "multiline": true
+    }
+  ]
+}
