@@ -225,23 +225,58 @@ setup_config() {
     mkdir -p "$DATA_DIR"
     
     # Copy example templates while respecting existing user placement (folders)
+    # Rule: Templates in folders take precedence over root-level templates
     if [[ -d "$SCRIPT_DIR/templates" ]]; then
         python3 - <<PY
 from pathlib import Path
 import shutil
+import os
 
 src = Path(r"""$SCRIPT_DIR/templates""")
 dst = Path(r"""$CONFIG_DIR/templates""")
 dst.mkdir(parents=True, exist_ok=True)
 
-# Copy all templates from repo, overwriting any existing files with same name
-# This ensures clean baseline templates are always used
-for src_file in src.rglob("*.json"):
-    target = dst / src_file.relative_to(src)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(src_file, target)
+# Build map of existing templates: filename -> list of paths
+existing = {}
+for p in dst.rglob("*.json"):
+    existing.setdefault(p.name, []).append(p)
 
-print("Synced templates from repository (overwrites enabled)")
+copied = 0
+skipped = 0
+updated = 0
+
+for src_file in src.rglob("*.json"):
+    locations = existing.get(src_file.name, [])
+    
+    # Check if template exists in a user folder (subdirectory)
+    folder_versions = [p for p in locations if p.parent != dst]
+    root_version = next((p for p in locations if p.parent == dst), None)
+    
+    if folder_versions:
+        # Folder version exists - it takes precedence
+        # If root version also exists, remove the duplicate
+        if root_version and root_version.exists():
+            root_version.unlink()
+            print(f"  Removed duplicate: {src_file.name} (folder version in {folder_versions[0].parent.name}/ takes precedence)")
+        skipped += 1
+        continue
+    
+    target = dst / src_file.relative_to(src)
+    
+    if target.exists():
+        # Check if repo version is newer
+        if src_file.stat().st_mtime > target.stat().st_mtime:
+            shutil.copy2(src_file, target)
+            updated += 1
+        else:
+            skipped += 1
+    else:
+        # New template - copy it
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src_file, target)
+        copied += 1
+
+print(f"Templates: {copied} new, {updated} updated, {skipped} skipped (folder precedence)")
 PY
     fi
     
