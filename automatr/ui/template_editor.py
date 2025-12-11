@@ -90,6 +90,7 @@ class TemplateEditor(QDialog):
         super().__init__(parent)
         self.template = template
         self.variables: list[Variable] = list(template.variables) if template else []
+        self.refinements: list[str] = list(template.refinements) if template else []
         self._last_folder = last_folder
         
         # Get initial folder for existing templates
@@ -160,6 +161,35 @@ class TemplateEditor(QDialog):
         
         layout.addLayout(var_layout)
         
+        # Refinements section (feedback-based improvements) - only show if there are refinements
+        self.refinements_label = QLabel("Refinements (from feedback):")
+        layout.addWidget(self.refinements_label)
+        
+        refinements_layout = QHBoxLayout()
+        
+        self.refinements_list = QListWidget()
+        self.refinements_list.setMaximumHeight(80)
+        refinements_layout.addWidget(self.refinements_list)
+        
+        refinements_buttons = QVBoxLayout()
+        
+        edit_ref_btn = QPushButton("Edit")
+        edit_ref_btn.clicked.connect(self._edit_refinement)
+        refinements_buttons.addWidget(edit_ref_btn)
+        
+        del_ref_btn = QPushButton("Delete")
+        del_ref_btn.setObjectName("danger")
+        del_ref_btn.clicked.connect(self._delete_refinement)
+        refinements_buttons.addWidget(del_ref_btn)
+        
+        refinements_buttons.addStretch()
+        refinements_layout.addLayout(refinements_buttons)
+        
+        layout.addLayout(refinements_layout)
+        
+        # Hide refinements section if no refinements
+        self._update_refinements_visibility()
+        
         # Content section
         content_label = QLabel("Content (use {{variable_name}} for placeholders):")
         layout.addWidget(content_label)
@@ -185,6 +215,8 @@ class TemplateEditor(QDialog):
         self.trigger_edit.setText(template.trigger)
         self.content_edit.setPlainText(template.content)
         self._refresh_var_list()
+        self._refresh_refinements_list()
+        self._update_refinements_visibility()
     
     def _refresh_var_list(self):
         self.var_list.clear()
@@ -195,6 +227,50 @@ class TemplateEditor(QDialog):
             if var.multiline:
                 text += " [multiline]"
             self.var_list.addItem(text)
+    
+    def _refresh_refinements_list(self):
+        """Refresh the refinements list widget."""
+        self.refinements_list.clear()
+        for ref in self.refinements:
+            # Truncate long refinements for display
+            display_text = ref if len(ref) <= 60 else ref[:57] + "..."
+            self.refinements_list.addItem(display_text)
+    
+    def _update_refinements_visibility(self):
+        """Show/hide refinements section based on whether there are any."""
+        has_refinements = len(self.refinements) > 0
+        self.refinements_label.setVisible(has_refinements)
+        self.refinements_list.setVisible(has_refinements)
+        # Find and hide the refinements layout parent widgets
+        self.refinements_list.parentWidget()  # This is a bit hacky but works
+    
+    def _edit_refinement(self):
+        """Edit the selected refinement."""
+        row = self.refinements_list.currentRow()
+        if row < 0 or row >= len(self.refinements):
+            return
+        
+        from PyQt6.QtWidgets import QInputDialog
+        text, ok = QInputDialog.getMultiLineText(
+            self,
+            "Edit Refinement",
+            "Edit the feedback refinement:",
+            self.refinements[row],
+        )
+        
+        if ok and text.strip():
+            self.refinements[row] = text.strip()
+            self._refresh_refinements_list()
+    
+    def _delete_refinement(self):
+        """Delete the selected refinement."""
+        row = self.refinements_list.currentRow()
+        if row < 0 or row >= len(self.refinements):
+            return
+        
+        del self.refinements[row]
+        self._refresh_refinements_list()
+        self._update_refinements_visibility()
     
     def _add_variable(self):
         dialog = VariableEditor(parent=self)
@@ -261,6 +337,7 @@ class TemplateEditor(QDialog):
             self.template.trigger = self.trigger_edit.text().strip()
             self.template.content = content
             self.template.variables = self.variables
+            self.template.refinements = self.refinements
             template = self.template
         else:
             template = Template(
@@ -269,6 +346,7 @@ class TemplateEditor(QDialog):
                 trigger=self.trigger_edit.text().strip(),
                 content=content,
                 variables=self.variables,
+                refinements=self.refinements,
             )
         
         # Save to disk (with folder support)

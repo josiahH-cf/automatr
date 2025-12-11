@@ -658,6 +658,9 @@ class MainWindow(QMainWindow):
         self.template_tree.setHeaderHidden(True)
         self.template_tree.itemClicked.connect(self._on_tree_item_clicked)
         self.template_tree.itemDoubleClicked.connect(self._on_tree_item_double_clicked)
+        # Enable context menu
+        self.template_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.template_tree.customContextMenuRequested.connect(self._show_template_context_menu)
         left_layout.addWidget(self.template_tree)
         
         # Template action buttons
@@ -703,14 +706,6 @@ class MainWindow(QMainWindow):
         self.render_template_btn.clicked.connect(self._render_template_only)
         middle_layout.addWidget(self.render_template_btn)
         
-        # Improve template button (optional - uses AI to refine template based on feedback)
-        self.improve_template_btn = QPushButton("Improve Template (Optional)")
-        self.improve_template_btn.setObjectName("secondary")
-        self.improve_template_btn.setEnabled(False)
-        self.improve_template_btn.setToolTip("Use AI to improve this template based on accumulated feedback")
-        self.improve_template_btn.clicked.connect(self._improve_template)
-        middle_layout.addWidget(self.improve_template_btn)
-        
         self.splitter.addWidget(middle_panel)
         
         # Right panel: Output
@@ -751,21 +746,6 @@ class MainWindow(QMainWindow):
         clear_btn.setObjectName("secondary")
         clear_btn.clicked.connect(self._clear_output)
         right_header.addWidget(clear_btn)
-        
-        # Feedback buttons - hidden until AI generation completes
-        self.thumbs_up_btn = QPushButton("Good")
-        self.thumbs_up_btn.setObjectName("secondary")
-        self.thumbs_up_btn.setToolTip("This output was helpful")
-        self.thumbs_up_btn.clicked.connect(self._on_thumbs_up)
-        self.thumbs_up_btn.setVisible(False)
-        right_header.addWidget(self.thumbs_up_btn)
-        
-        self.thumbs_down_btn = QPushButton("Needs Work")
-        self.thumbs_down_btn.setObjectName("secondary")
-        self.thumbs_down_btn.setToolTip("This output needs improvement")
-        self.thumbs_down_btn.clicked.connect(self._on_thumbs_down)
-        self.thumbs_down_btn.setVisible(False)
-        right_header.addWidget(self.thumbs_down_btn)
         
         right_layout.addLayout(right_header)
         
@@ -922,6 +902,14 @@ class MainWindow(QMainWindow):
         
         self.status_bar.showMessage(f"Loaded {total_count} templates", 3000)
     
+    def _refresh_templates(self):
+        """Refresh the template list (alias for _load_templates)."""
+        self._load_templates()
+    
+    def _load_template(self, template: Template):
+        """Load a specific template into the variable form."""
+        self.variable_form.set_template(template)
+    
     def _on_tree_item_clicked(self, item: QTreeWidgetItem, column: int):
         """Handle tree item single click."""
         data = item.data(0, Qt.ItemDataRole.UserRole)
@@ -931,14 +919,12 @@ class MainWindow(QMainWindow):
             self.variable_form.set_template(template)
             self.generate_btn.setEnabled(True)
             self.render_template_btn.setEnabled(True)
-            self.improve_template_btn.setEnabled(True)
         else:
             # Folder clicked - clear selection
             self.current_template = None
             self.variable_form.clear()
             self.generate_btn.setEnabled(False)
             self.render_template_btn.setEnabled(False)
-            self.improve_template_btn.setEnabled(False)
     
     def _on_tree_item_double_clicked(self, item: QTreeWidgetItem, column: int):
         """Handle tree item double click."""
@@ -946,6 +932,49 @@ class MainWindow(QMainWindow):
         if data and data[0] == "template":
             self._edit_template()
     
+    def _show_template_context_menu(self, position):
+        """Show context menu for template tree items."""
+        item = self.template_tree.itemAt(position)
+        if not item:
+            return
+        
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if not data:
+            return
+        
+        menu = QMenu(self)
+        
+        if data[0] == "template":
+            template = data[1]
+            
+            # Edit action
+            edit_action = menu.addAction("Edit Template")
+            edit_action.triggered.connect(self._edit_template)
+            
+            # Improve action
+            improve_action = menu.addAction("Improve Template...")
+            improve_action.triggered.connect(self._improve_template)
+            
+            # Version history action (only if versions exist)
+            manager = get_template_manager()
+            versions = manager.list_versions(template)
+            if versions:
+                history_action = menu.addAction(f"Version History ({len(versions)})...")
+                history_action.triggered.connect(self._show_version_history)
+            
+            menu.addSeparator()
+            
+            # Delete action
+            delete_action = menu.addAction("Delete Template")
+            delete_action.triggered.connect(self._delete_template)
+        
+        elif data[0] == "folder":
+            # Folder context menu
+            delete_action = menu.addAction("Delete Folder")
+            delete_action.triggered.connect(self._delete_selected)
+        
+        menu.exec(self.template_tree.mapToGlobal(position))
+
     def _new_folder(self):
         """Create a new template folder."""
         name, ok = QInputDialog.getText(
@@ -1029,9 +1058,23 @@ class MainWindow(QMainWindow):
         dialog.exec()
     
     def _improve_template(self):
-        """Improve the selected template using AI based on accumulated feedback."""
+        """Improve the selected template using AI based on user feedback.
+        
+        Prompts user for feedback first, then generates improvements.
+        """
         if not self.current_template:
             return
+        
+        # Prompt for feedback first
+        feedback, ok = QInputDialog.getMultiLineText(
+            self,
+            "Improve Template",
+            "How could this template be better?\n(What isn't working or should be different?)",
+            "",
+        )
+        
+        if not ok:
+            return  # User cancelled
         
         # Check LLM status
         server = get_llm_server()
@@ -1052,34 +1095,114 @@ class MainWindow(QMainWindow):
             else:
                 return
         
-        # Show improvement dialog
-        dialog = TemplateImproveDialog(self.current_template, parent=self)
+        # Show improvement dialog with feedback
+        dialog = TemplateImproveDialog(
+            self.current_template, 
+            initial_feedback=feedback.strip() if feedback else "",
+            parent=self
+        )
         dialog.changes_applied.connect(self._on_improvement_applied)
         dialog.exec()
     
     def _on_improvement_applied(self, new_content: str):
-        """Handle when user applies improved template content."""
+        """Handle when user applies improved template content.
+        
+        Creates a version snapshot of the current template before saving changes.
+        """
         if not self.current_template:
             return
         
-        # Create a copy of the template with improved content for editing
-        # Don't modify the original until user explicitly saves
-        from automatr.core.templates import Template
-        improved_template = Template(
-            name=self.current_template.name,
-            content=new_content,
-            description=self.current_template.description,
-            trigger=self.current_template.trigger,
-            variables=list(self.current_template.variables),
-            refinements=[],  # Clear refinements since they've been addressed
-        )
-        # Preserve the file path so it saves to the same location
-        improved_template._path = self.current_template._path
+        # Create a version snapshot before modifying
+        manager = get_template_manager()
+        manager.create_version(self.current_template, note="Before AI improvement")
         
-        # Open editor for final review - user must explicitly save
-        dialog = TemplateEditor(improved_template, parent=self)
-        dialog.template_saved.connect(self._on_template_saved)
-        dialog.exec()
+        # Update template with improved content
+        self.current_template.content = new_content
+        self.current_template.refinements = []  # Clear refinements since they've been addressed
+        
+        # Save the updated template
+        folder = manager.get_template_folder(self.current_template)
+        if manager.save_to_folder(self.current_template, folder):
+            self.status_bar.showMessage("Template improved and saved", 3000)
+            self._refresh_templates()
+            # Re-select the template to update the UI
+            self._load_template(self.current_template)
+        else:
+            QMessageBox.critical(self, "Error", "Failed to save improved template")
+
+    def _show_version_history(self):
+        """Show version history dialog for the current template."""
+        if not self.current_template:
+            return
+        
+        manager = get_template_manager()
+        versions = manager.list_versions(self.current_template)
+        
+        if not versions:
+            QMessageBox.information(
+                self,
+                "No Version History",
+                "This template has no version history to revert to."
+            )
+            return
+        
+        # Build list of version options
+        items = []
+        for v in reversed(versions):  # Most recent first
+            timestamp = v.timestamp[:19].replace("T", " ") if v.timestamp else "Unknown"
+            label = f"v{v.version}"
+            if v.version == 1:
+                label += " (Original)"
+            if v.note:
+                label += f" - {v.note}"
+            label += f" [{timestamp}]"
+            items.append(label)
+        
+        item, ok = QInputDialog.getItem(
+            self,
+            "Revert Template",
+            f"Select a version to revert '{self.current_template.name}' to:",
+            items,
+            0,  # Default to most recent
+            False,  # Not editable
+        )
+        
+        if not ok or not item:
+            return
+        
+        # Extract version number from selected item
+        selected_idx = items.index(item)
+        selected_version = versions[-(selected_idx + 1)]  # Reverse index since list is reversed
+        
+        # Confirm revert
+        reply = QMessageBox.question(
+            self,
+            "Confirm Revert",
+            f"Revert to version {selected_version.version}?\n\n"
+            f"This will replace the current template content with the selected version.\n"
+            f"A backup of the current state will be saved.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        
+        # Perform revert
+        restored = manager.restore_version(
+            self.current_template, 
+            selected_version.version,
+            create_backup=True
+        )
+        
+        if restored:
+            self.current_template = restored
+            self._refresh_templates()
+            self._load_template(self.current_template)
+            self.status_bar.showMessage(
+                f"Reverted to version {selected_version.version}", 3000
+            )
+        else:
+            QMessageBox.critical(self, "Error", "Failed to revert template")
     
     def _delete_template(self):
         """Delete the selected template."""
@@ -1107,7 +1230,6 @@ class MainWindow(QMainWindow):
                 self.variable_form.clear()
                 self.generate_btn.setEnabled(False)
                 self.render_template_btn.setEnabled(False)
-                self.improve_template_btn.setEnabled(False)
                 self._load_templates()
                 
                 # Auto-sync Espanso if enabled and template had a trigger
@@ -1231,8 +1353,7 @@ class MainWindow(QMainWindow):
         self._gen_dot_count = 0
         self._gen_timer.start(500)
         
-        # Hide feedback buttons and store prompt for later feedback
-        self._hide_feedback_buttons()
+        # Store prompt for reference
         self._last_prompt = prompt
         self._last_output = None
         
@@ -1254,9 +1375,6 @@ class MainWindow(QMainWindow):
         
         # Display in output
         self.output_text.setPlainText(rendered)
-        
-        # Hide feedback buttons - this is not AI-generated
-        self._hide_feedback_buttons()
         
         # Auto-copy to clipboard
         QApplication.clipboard().setText(rendered)
@@ -1281,9 +1399,8 @@ class MainWindow(QMainWindow):
         self.stop_gen_btn.setVisible(False)
         self.generating_label.setVisible(False)
         
-        # Store output and show feedback buttons
+        # Store output for reference
         self._last_output = result
-        self._show_feedback_buttons()
     
     def _on_generation_error(self, error: str):
         """Handle generation error."""
@@ -1295,7 +1412,6 @@ class MainWindow(QMainWindow):
         self.stop_gen_btn.setVisible(False)
         self.generating_label.setVisible(False)
         
-        self._hide_feedback_buttons()
         QMessageBox.critical(self, "Generation Error", error)
     
     def _copy_output(self):
@@ -1321,65 +1437,6 @@ class MainWindow(QMainWindow):
     def _clear_output(self):
         """Clear the output pane."""
         self.output_text.clear()
-        self._hide_feedback_buttons()
-
-    def _show_feedback_buttons(self):
-        """Show the feedback buttons after AI generation."""
-        self.thumbs_up_btn.setVisible(True)
-        self.thumbs_down_btn.setVisible(True)
-    
-    def _hide_feedback_buttons(self):
-        """Hide the feedback buttons."""
-        self.thumbs_up_btn.setVisible(False)
-        self.thumbs_down_btn.setVisible(False)
-    
-    def _on_thumbs_up(self):
-        """Handle thumbs-up feedback."""
-        if not self.current_template or not self._last_prompt or not self._last_output:
-            return
-        
-        feedback_manager = get_feedback_manager()
-        feedback_manager.add(
-            template_name=self.current_template.name,
-            prompt=self._last_prompt,
-            output=self._last_output,
-            rating="up",
-        )
-        
-        self._hide_feedback_buttons()
-        self.status_bar.showMessage("Thanks for the feedback!", 2000)
-    
-    def _on_thumbs_down(self):
-        """Handle thumbs-down feedback with optional correction."""
-        if not self.current_template or not self._last_prompt or not self._last_output:
-            return
-        
-        # Ask for optional correction
-        correction, ok = QInputDialog.getMultiLineText(
-            self,
-            "Feedback",
-            "What should have been different? (optional)",
-            "",
-        )
-        
-        # User cancelled - still record the thumbs-down without correction
-        feedback_manager = get_feedback_manager()
-        feedback_manager.add(
-            template_name=self.current_template.name,
-            prompt=self._last_prompt,
-            output=self._last_output,
-            rating="down",
-            correction=correction if ok else None,
-        )
-        
-        # If correction provided, add it to template refinements and save
-        if ok and correction and correction.strip():
-            self.current_template.refinements.append(correction.strip())
-            manager = get_template_manager()
-            manager.save(self.current_template)
-        
-        self._hide_feedback_buttons()
-        self.status_bar.showMessage("Thanks for the feedback!", 2000)
 
 
 def run_gui() -> int:

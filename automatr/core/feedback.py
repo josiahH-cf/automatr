@@ -143,7 +143,10 @@ def get_feedback_manager() -> FeedbackManager:
 
 
 def build_improvement_prompt(template_content: str, refinements: List[str], additional_notes: str = "") -> str:
-    """Build a prompt asking the LLM to improve a template based on refinements.
+    """Build a prompt asking the LLM to improve a template based on user's custom prompt template.
+    
+    Loads the improvement prompt template from the config directory and replaces
+    placeholders with actual values.
     
     Args:
         template_content: The current template content.
@@ -153,36 +156,27 @@ def build_improvement_prompt(template_content: str, refinements: List[str], addi
     Returns:
         A prompt string for the LLM.
     """
-    prompt_parts = [
-        "You are a prompt engineering expert. Improve the template below based on user feedback.",
-        "",
-        "CURRENT TEMPLATE:",
-        "---START TEMPLATE---",
-        template_content,
-        "---END TEMPLATE---",
-        "",
-    ]
+    from automatr.core.config import load_improvement_prompt
     
+    # Load custom prompt template (or default)
+    prompt_template = load_improvement_prompt()
+    
+    # Build refinements section
+    refinements_text = ""
     if refinements:
-        prompt_parts.extend(["USER FEEDBACK TO ADDRESS:"])
+        refinements_lines = ["USER FEEDBACK TO ADDRESS:"]
         for i, ref in enumerate(refinements, 1):
-            prompt_parts.append(f"{i}. {ref}")
-        prompt_parts.append("")
+            refinements_lines.append(f"{i}. {ref}")
+        refinements_text = "\n".join(refinements_lines)
     
+    # Build additional notes section
+    notes_text = ""
     if additional_notes:
-        prompt_parts.extend(["ADDITIONAL NOTES:", additional_notes, ""])
+        notes_text = f"ADDITIONAL NOTES:\n{additional_notes}"
     
-    prompt_parts.extend([
-        "CRITICAL INSTRUCTIONS:",
-        "- Output ONLY the improved template text",
-        "- Do NOT include any explanations, commentary, or meta-text",
-        "- Do NOT include markdown code blocks or formatting markers",
-        "- Do NOT include phrases like 'Here is the improved template'",
-        "- Do NOT include the words 'template', 'improvement', 'feedback', or 'refinement' in your output",
-        "- Keep all {{variable_name}} placeholders exactly as they appear",
-        "- The output should be ready to use directly as a prompt template",
-        "",
-        "OUTPUT THE IMPROVED TEMPLATE NOW:",
-    ])
+    # Replace placeholders in the template
+    prompt = prompt_template.replace("{{template_content}}", template_content)
+    prompt = prompt.replace("{{refinements}}", refinements_text)
+    prompt = prompt.replace("{{additional_notes}}", notes_text)
     
-    return "\n".join(prompt_parts)
+    return prompt

@@ -75,6 +75,83 @@ def get_templates_dir() -> Path:
     return templates_dir
 
 
+def get_improvement_prompt_path() -> Path:
+    """Get the path to the improvement prompt template file."""
+    return get_config_dir() / "improvement_prompt.txt"
+
+
+# Default improvement prompt template with placeholders
+DEFAULT_IMPROVEMENT_PROMPT = """You are a prompt engineering expert. Modify the template below based on user feedback.
+
+User feedback may ask you to:
+- ADD new content or sections
+- REMOVE existing content or sections
+- MODIFY or rewrite existing content
+- RESTRUCTURE the template
+
+CURRENT TEMPLATE:
+---START TEMPLATE---
+{{template_content}}
+---END TEMPLATE---
+
+{{refinements}}
+
+{{additional_notes}}
+
+CRITICAL INSTRUCTIONS:
+- Output ONLY the modified template text
+- If asked to REMOVE something, your output must NOT contain that content
+- NEVER duplicate or repeat sections - output the template exactly once
+- Do NOT include any explanations, commentary, or meta-text
+- Do NOT include markdown code blocks or formatting markers
+- Do NOT include phrases like 'Here is the improved template'
+- Keep all {{variable_name}} placeholders exactly as they appear in the original
+- The output should be ready to use directly as a prompt template
+
+OUTPUT THE MODIFIED TEMPLATE NOW:"""
+
+
+def load_improvement_prompt() -> str:
+    """Load the improvement prompt template from file.
+    
+    Returns the default if file doesn't exist.
+    """
+    path = get_improvement_prompt_path()
+    if path.exists():
+        try:
+            return path.read_text(encoding="utf-8")
+        except OSError:
+            pass
+    return DEFAULT_IMPROVEMENT_PROMPT
+
+
+def save_improvement_prompt(prompt: str) -> bool:
+    """Save the improvement prompt template to file.
+    
+    Args:
+        prompt: The prompt template text.
+        
+    Returns:
+        True if saved successfully, False otherwise.
+    """
+    path = get_improvement_prompt_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(prompt, encoding="utf-8")
+        return True
+    except OSError:
+        return False
+
+
+def reset_improvement_prompt() -> bool:
+    """Reset the improvement prompt to the default.
+    
+    Returns:
+        True if reset successfully, False otherwise.
+    """
+    return save_improvement_prompt(DEFAULT_IMPROVEMENT_PROMPT)
+
+
 @dataclass
 class LLMConfig:
     """Configuration for the local LLM server."""
@@ -88,7 +165,7 @@ class LLMConfig:
     
     # Generation parameters (live-tunable)
     temperature: float = 0.7
-    max_tokens: int = 512
+    max_tokens: int = 4096
     top_p: float = 1.0
     top_k: int = 40
     repeat_penalty: float = 1.1
@@ -116,6 +193,9 @@ class UIConfig:
     last_template: str = ""
     expanded_folders: list = field(default_factory=list)
     last_editor_folder: str = ""
+    
+    # Template versioning
+    max_template_versions: int = 10  # Max versions to keep per template (original always preserved)
 
 
 @dataclass

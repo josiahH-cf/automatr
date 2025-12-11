@@ -1,32 +1,25 @@
 """LLM Settings dialog for Automatr.
 
-Simple GUI for live-tuning llama.cpp generation parameters.
+Simplified GUI for max token length setting.
+Advanced settings available in llama.cpp web UI.
 """
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
-    QDoubleSpinBox,
     QFormLayout,
-    QHBoxLayout,
     QLabel,
     QPushButton,
     QSpinBox,
     QVBoxLayout,
 )
 
-from automatr.core.config import get_config_manager, LLMConfig
+from automatr.core.config import get_config_manager
 
 
-# Default values (must match LLMConfig dataclass defaults)
-DEFAULTS = {
-    "temperature": 0.7,
-    "max_tokens": 512,
-    "top_p": 1.0,
-    "top_k": 40,
-    "repeat_penalty": 1.1,
-}
+# Default value (must match LLMConfig dataclass default)
+DEFAULT_MAX_TOKENS = 4096
 
 
 class LLMSettingsDialog(QDialog):
@@ -43,73 +36,51 @@ class LLMSettingsDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Header
-        header = QLabel("Generation Parameters")
+        header = QLabel("Generation Settings")
         header.setStyleSheet("font-weight: bold; font-size: 14px;")
         layout.addWidget(header)
 
-        hint = QLabel("Changes apply to new requests immediately.")
-        hint.setStyleSheet("color: #888; font-size: 11px;")
-        layout.addWidget(hint)
-
         layout.addSpacing(10)
 
-        # Form with settings
+        # Form with max tokens setting
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-
-        # Temperature (0.0 - 2.0)
-        self.temperature_spin = QDoubleSpinBox()
-        self.temperature_spin.setRange(0.0, 2.0)
-        self.temperature_spin.setSingleStep(0.1)
-        self.temperature_spin.setDecimals(2)
-        self.temperature_spin.setToolTip(
-            "Controls randomness. Lower = more focused, higher = more creative."
-        )
-        form.addRow("Temperature:", self.temperature_spin)
 
         # Max tokens (1 - 8192)
         self.max_tokens_spin = QSpinBox()
         self.max_tokens_spin.setRange(1, 8192)
-        self.max_tokens_spin.setSingleStep(64)
-        self.max_tokens_spin.setToolTip("Maximum number of tokens to generate.")
-        form.addRow("Max Tokens:", self.max_tokens_spin)
-
-        # Top-p (0.0 - 1.0)
-        self.top_p_spin = QDoubleSpinBox()
-        self.top_p_spin.setRange(0.0, 1.0)
-        self.top_p_spin.setSingleStep(0.05)
-        self.top_p_spin.setDecimals(2)
-        self.top_p_spin.setToolTip(
-            "Nucleus sampling. 1.0 = disabled. Lower = more focused."
+        self.max_tokens_spin.setSingleStep(256)
+        self.max_tokens_spin.setToolTip(
+            "Maximum tokens to generate per response.\n"
+            "Cannot exceed the server's context size (default 4096)."
         )
-        form.addRow("Top-p:", self.top_p_spin)
-
-        # Top-k (0 - 100)
-        self.top_k_spin = QSpinBox()
-        self.top_k_spin.setRange(0, 100)
-        self.top_k_spin.setSingleStep(5)
-        self.top_k_spin.setToolTip(
-            "Limits token choices. 0 = disabled. Lower = more focused."
-        )
-        form.addRow("Top-k:", self.top_k_spin)
-
-        # Repeat penalty (1.0 - 2.0)
-        self.repeat_penalty_spin = QDoubleSpinBox()
-        self.repeat_penalty_spin.setRange(1.0, 2.0)
-        self.repeat_penalty_spin.setSingleStep(0.05)
-        self.repeat_penalty_spin.setDecimals(2)
-        self.repeat_penalty_spin.setToolTip(
-            "Penalizes repetition. 1.0 = no penalty."
-        )
-        form.addRow("Repeat Penalty:", self.repeat_penalty_spin)
+        form.addRow("Max Token Length:", self.max_tokens_spin)
 
         layout.addLayout(form)
-        layout.addSpacing(10)
+        layout.addSpacing(15)
 
         # Reset button
-        reset_btn = QPushButton("Reset to Defaults")
+        reset_btn = QPushButton("Reset to Default")
         reset_btn.clicked.connect(self._reset_to_defaults)
         layout.addWidget(reset_btn)
+
+        layout.addSpacing(20)
+
+        # Help text for advanced settings
+        advanced_label = QLabel("Advanced Settings")
+        advanced_label.setStyleSheet("font-weight: bold; font-size: 12px;")
+        layout.addWidget(advanced_label)
+
+        help_text = QLabel(
+            "For temperature, top-p, top-k, and other generation parameters:\n\n"
+            "1. Open http://localhost:8080 in your browser\n"
+            "2. Adjust settings in the llama.cpp web interface\n"
+            "3. Settings apply per-session while the server runs\n\n"
+            "Context size requires a server restart (LLM → Stop, then Start)."
+        )
+        help_text.setStyleSheet("color: #888; font-size: 11px;")
+        help_text.setWordWrap(True)
+        layout.addWidget(help_text)
 
         layout.addStretch()
 
@@ -125,30 +96,14 @@ class LLMSettingsDialog(QDialog):
     def _load_settings(self):
         """Load current settings from config."""
         config = get_config_manager().config.llm
-        self.temperature_spin.setValue(config.temperature)
         self.max_tokens_spin.setValue(config.max_tokens)
-        self.top_p_spin.setValue(config.top_p)
-        self.top_k_spin.setValue(config.top_k)
-        self.repeat_penalty_spin.setValue(config.repeat_penalty)
 
     def _reset_to_defaults(self):
-        """Reset all fields to default values."""
-        self.temperature_spin.setValue(DEFAULTS["temperature"])
-        self.max_tokens_spin.setValue(DEFAULTS["max_tokens"])
-        self.top_p_spin.setValue(DEFAULTS["top_p"])
-        self.top_k_spin.setValue(DEFAULTS["top_k"])
-        self.repeat_penalty_spin.setValue(DEFAULTS["repeat_penalty"])
+        """Reset to default value."""
+        self.max_tokens_spin.setValue(DEFAULT_MAX_TOKENS)
 
     def _save_settings(self):
         """Save settings to config and close."""
         config_manager = get_config_manager()
-        config_manager.update(
-            **{
-                "llm.temperature": self.temperature_spin.value(),
-                "llm.max_tokens": self.max_tokens_spin.value(),
-                "llm.top_p": self.top_p_spin.value(),
-                "llm.top_k": self.top_k_spin.value(),
-                "llm.repeat_penalty": self.repeat_penalty_spin.value(),
-            }
-        )
+        config_manager.update(**{"llm.max_tokens": self.max_tokens_spin.value()})
         self.accept()

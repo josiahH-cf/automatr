@@ -2,15 +2,17 @@
 
 Handles loading, saving, and rendering JSON templates.
 Templates are stored as individual JSON files in the templates directory.
+Version history is stored in _versions/ subdirectory.
 """
 
 import json
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Iterator
 
-from automatr.core.config import get_templates_dir
+from automatr.core.config import get_templates_dir, get_config
 
 
 @dataclass
@@ -82,6 +84,7 @@ class Template:
     description: str = ""
     trigger: str = ""  # Espanso trigger (e.g., ":review")
     variables: List[Variable] = field(default_factory=list)
+    refinements: List[str] = field(default_factory=list)  # User feedback for template improvement
     
     # Internal: path to the JSON file (set when loaded from disk)
     _path: Optional[Path] = field(default=None, repr=False)
@@ -107,6 +110,8 @@ class Template:
             d["trigger"] = self.trigger
         if self.variables:
             d["variables"] = [v.to_dict() for v in self.variables]
+        if self.refinements:
+            d["refinements"] = self.refinements
         return d
     
     @classmethod
@@ -121,6 +126,7 @@ class Template:
             description=data.get("description", ""),
             trigger=data.get("trigger", ""),
             variables=variables,
+            refinements=data.get("refinements", []),
             _path=path,
         )
     
@@ -148,12 +154,50 @@ class Template:
         return result
 
 
+@dataclass
+class TemplateVersion:
+    """A versioned snapshot of a template.
+    
+    Attributes:
+        version: Version number (1 = original, higher = more recent)
+        timestamp: ISO format timestamp when version was created
+        note: Optional user note describing what changed
+        template_data: Full template data as dict (for restoration)
+    """
+    version: int
+    timestamp: str
+    note: str
+    template_data: Dict[str, Any]
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "version": self.version,
+            "timestamp": self.timestamp,
+            "note": self.note,
+            "template_data": self.template_data,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "TemplateVersion":
+        """Create from dictionary."""
+        return cls(
+            version=data.get("version", 1),
+            timestamp=data.get("timestamp", ""),
+            note=data.get("note", ""),
+            template_data=data.get("template_data", {}),
+        )
+
+
 class TemplateManager:
     """Manages template CRUD operations.
     
     Templates are stored as individual JSON files in the templates directory.
+    Version history is stored in _versions/ subdirectory.
     No SQLite, no indexing — just filesystem operations.
     """
+    
+    VERSIONS_DIR = "_versions"
     
     def __init__(self, templates_dir: Optional[Path] = None):
         """Initialize TemplateManager.
@@ -163,6 +207,195 @@ class TemplateManager:
         """
         self.templates_dir = templates_dir or get_templates_dir()
         self.templates_dir.mkdir(parents=True, exist_ok=True)
+        # Create versions directory
+        self._versions_dir = self.templates_dir / self.VERSIONS_DIR
+        self._versions_dir.mkdir(parents=True, exist_ok=True)
+    
+    def _get_version_dir(self, template: Template) -> Path:
+        """Get the version history directory for a template.
+        
+        Args:
+            template: Template to get version dir for.
+            
+        Returns:
+            Path to the template's version directory.
+        """
+        # Use template filename (without .json) as version subdirectory
+        slug = template.filename.replace(".json", "")
+        version_dir = self._versions_dir / slug
+        version_dir.mkdir(parents=True, exist_ok=True)
+        return version_dir
+    
+    def _get_max_versions(self) -> int:
+        """Get the maximum number of versions to keep per template."""
+        config = get_config()
+        return config.ui.max_template_versions
+    
+    def create_version(self, template: Template, note: str = "") -> Optional[TemplateVersion]:
+        """Create a new version snapshot of a template.
+        
+        Args:
+            template: Template to create version for.
+            note: Optional note describing what changed.
+            
+        Returns:
+            The created TemplateVersion, or None if failed.
+        """
+        version_dir = self._get_version_dir(template)
+        
+        # Find the next version number
+        existing_versions = self.list_versions(template)
+        next_version = 1 if not existing_versions else existing_versions[-1].version + 1
+        
+        # Create version snapshot
+        version = TemplateVersion(
+            version=next_version,
+            timestamp=datetime.now().isoformat(),
+            note=note,
+            template_data=template.to_dict(),
+        )
+        
+        # Save version file
+        version_path = version_dir / f"v{next_version}.json"
+        try:
+            with open(version_path, "w", encoding="utf-8") as f:
+                json.dump(version.to_dict(), f, indent=2)
+        except OSError as e:
+            print(f"Error saving version: {e}")
+            return None
+        
+        # Prune old versions (keep original v1 + most recent N-1)
+        self._prune_versions(template)
+        
+        return version
+    
+    def list_versions(self, template: Template) -> List[TemplateVersion]:
+        """List all versions for a template.
+        
+        Args:
+            template: Template to list versions for.
+            
+        Returns:
+            List of TemplateVersion objects, sorted by version number (ascending).
+        """
+        version_dir = self._get_version_dir(template)
+        versions = []
+        
+        for path in version_dir.glob("v*.json"):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                versions.append(TemplateVersion.from_dict(data))
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"Warning: Failed to load version {path}: {e}")
+        
+        return sorted(versions, key=lambda v: v.version)
+    
+    def get_version(self, template: Template, version_num: int) -> Optional[TemplateVersion]:
+        """Get a specific version of a template.
+        
+        Args:
+            template: Template to get version for.
+            version_num: Version number to retrieve.
+            
+        Returns:
+            TemplateVersion, or None if not found.
+        """
+        version_dir = self._get_version_dir(template)
+        version_path = version_dir / f"v{version_num}.json"
+        
+        if not version_path.exists():
+            return None
+        
+        try:
+            with open(version_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return TemplateVersion.from_dict(data)
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"Error loading version {version_num}: {e}")
+            return None
+    
+    def restore_version(self, template: Template, version_num: int, create_backup: bool = True) -> Optional[Template]:
+        """Restore a template to a previous version.
+        
+        Args:
+            template: Template to restore.
+            version_num: Version number to restore to.
+            create_backup: If True, create a version snapshot before restoring.
+            
+        Returns:
+            The restored Template, or None if failed.
+        """
+        version = self.get_version(template, version_num)
+        if not version:
+            return None
+        
+        # Create backup of current state before restoring
+        if create_backup:
+            self.create_version(template, note=f"Backup before revert to v{version_num}")
+        
+        # Restore template data
+        restored = Template.from_dict(version.template_data, path=template._path)
+        
+        # Save restored template
+        if self.save(restored):
+            return restored
+        return None
+    
+    def _prune_versions(self, template: Template) -> None:
+        """Prune old versions to stay within the limit.
+        
+        Always keeps v1 (original) and the most recent versions up to the limit.
+        
+        Args:
+            template: Template to prune versions for.
+        """
+        max_versions = self._get_max_versions()
+        versions = self.list_versions(template)
+        
+        if len(versions) <= max_versions:
+            return
+        
+        # Keep v1 (original) and the most recent (max_versions - 1)
+        to_keep = set()
+        
+        # Always keep original (v1) if it exists
+        if versions and versions[0].version == 1:
+            to_keep.add(1)
+        
+        # Keep the most recent versions
+        recent_count = max_versions - len(to_keep)
+        for v in versions[-recent_count:]:
+            to_keep.add(v.version)
+        
+        # Delete versions not in to_keep
+        version_dir = self._get_version_dir(template)
+        for v in versions:
+            if v.version not in to_keep:
+                version_path = version_dir / f"v{v.version}.json"
+                try:
+                    version_path.unlink()
+                except OSError:
+                    pass
+    
+    def delete_version_history(self, template: Template) -> bool:
+        """Delete all version history for a template.
+        
+        Args:
+            template: Template to delete history for.
+            
+        Returns:
+            True if deleted successfully, False otherwise.
+        """
+        version_dir = self._get_version_dir(template)
+        try:
+            import shutil
+            if version_dir.exists():
+                shutil.rmtree(version_dir)
+            return True
+        except OSError as e:
+            print(f"Error deleting version history: {e}")
+            return False
     
     def list_all(self) -> List[Template]:
         """List all templates.
@@ -172,6 +405,9 @@ class TemplateManager:
         """
         templates = []
         for path in self.templates_dir.glob("**/*.json"):
+            # Skip version files
+            if self.VERSIONS_DIR in path.parts:
+                continue
             try:
                 template = self.load(path)
                 if template:
@@ -315,10 +551,11 @@ class TemplateManager:
         
         Returns:
             List of folder names (relative to templates_dir), sorted alphabetically.
+            Excludes the _versions directory used for version history.
         """
         folders = []
         for path in self.templates_dir.iterdir():
-            if path.is_dir():
+            if path.is_dir() and path.name != self.VERSIONS_DIR:
                 folders.append(path.name)
         return sorted(folders, key=str.lower)
     
