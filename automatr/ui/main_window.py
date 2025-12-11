@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QByteArray
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QByteArray, QTimer
 from PyQt6.QtGui import QAction, QKeySequence, QDesktopServices, QShortcut, QWheelEvent, QFont, QCloseEvent
 from PyQt6.QtWidgets import (
     QApplication,
@@ -38,12 +38,14 @@ from PyQt6.QtWidgets import (
 
 from automatr import __version__
 from automatr.core.config import get_config, save_config
+from automatr.core.feedback import get_feedback_manager
 from automatr.core.templates import Template, get_template_manager
 from automatr.integrations.llm import get_llm_client, get_llm_server
 from automatr.integrations.espanso import get_espanso_manager
 from automatr.ui.theme import get_theme_stylesheet
 from automatr.ui.template_editor import TemplateEditor
 from automatr.ui.llm_settings import LLMSettingsDialog
+from automatr.ui.template_improve import TemplateImproveDialog
 
 
 class GenerationWorker(QThread):
@@ -57,6 +59,11 @@ class GenerationWorker(QThread):
         super().__init__()
         self.prompt = prompt
         self.stream = stream
+        self._stopped = False
+    
+    def stop(self):
+        """Request generation to stop."""
+        self._stopped = True
     
     def run(self):
         try:
@@ -65,6 +72,8 @@ class GenerationWorker(QThread):
             if self.stream:
                 result = []
                 for token in client.generate_stream(self.prompt):
+                    if self._stopped:
+                        break
                     result.append(token)
                     self.token_received.emit(token)
                 self.finished.emit("".join(result))
@@ -73,7 +82,8 @@ class GenerationWorker(QThread):
                 self.finished.emit(result)
                 
         except Exception as e:
-            self.error.emit(str(e))
+            if not self._stopped:
+                self.error.emit(str(e))
 
 
 class ModelCopyWorker(QThread):
@@ -221,6 +231,10 @@ class MainWindow(QMainWindow):
         
         self.current_template: Optional[Template] = None
         self.worker: Optional[GenerationWorker] = None
+        
+        # Feedback tracking - stores last AI generation for feedback
+        self._last_prompt: Optional[str] = None
+        self._last_output: Optional[str] = None
         
         self._setup_menu_bar()
         self._setup_ui()
@@ -689,6 +703,14 @@ class MainWindow(QMainWindow):
         self.render_template_btn.clicked.connect(self._render_template_only)
         middle_layout.addWidget(self.render_template_btn)
         
+        # Improve template button (optional - uses AI to refine template based on feedback)
+        self.improve_template_btn = QPushButton("Improve Template (Optional)")
+        self.improve_template_btn.setObjectName("secondary")
+        self.improve_template_btn.setEnabled(False)
+        self.improve_template_btn.setToolTip("Use AI to improve this template based on accumulated feedback")
+        self.improve_template_btn.clicked.connect(self._improve_template)
+        middle_layout.addWidget(self.improve_template_btn)
+        
         self.splitter.addWidget(middle_panel)
         
         # Right panel: Output
@@ -702,15 +724,48 @@ class MainWindow(QMainWindow):
         right_header.addWidget(right_label)
         right_header.addStretch()
         
-        copy_btn = QPushButton("Copy")
-        copy_btn.setObjectName("secondary")
-        copy_btn.clicked.connect(self._copy_output)
-        right_header.addWidget(copy_btn)
+        self.copy_btn = QPushButton("Copy")
+        self.copy_btn.setObjectName("secondary")
+        self.copy_btn.clicked.connect(self._copy_output)
+        right_header.addWidget(self.copy_btn)
+        
+        # Stop generation button (hidden by default)
+        self.stop_gen_btn = QPushButton("Stop")
+        self.stop_gen_btn.setObjectName("secondary")
+        self.stop_gen_btn.clicked.connect(self._stop_generation)
+        self.stop_gen_btn.setVisible(False)
+        right_header.addWidget(self.stop_gen_btn)
+        
+        # Generating indicator (hidden by default)
+        self.generating_label = QLabel("Generating...")
+        self.generating_label.setStyleSheet("color: #808080; font-style: italic;")
+        self.generating_label.setVisible(False)
+        right_header.addWidget(self.generating_label)
+        
+        # Timer for animated dots
+        self._gen_dot_count = 0
+        self._gen_timer = QTimer()
+        self._gen_timer.timeout.connect(self._update_generating_dots)
         
         clear_btn = QPushButton("Clear")
         clear_btn.setObjectName("secondary")
         clear_btn.clicked.connect(self._clear_output)
         right_header.addWidget(clear_btn)
+        
+        # Feedback buttons - hidden until AI generation completes
+        self.thumbs_up_btn = QPushButton("Good")
+        self.thumbs_up_btn.setObjectName("secondary")
+        self.thumbs_up_btn.setToolTip("This output was helpful")
+        self.thumbs_up_btn.clicked.connect(self._on_thumbs_up)
+        self.thumbs_up_btn.setVisible(False)
+        right_header.addWidget(self.thumbs_up_btn)
+        
+        self.thumbs_down_btn = QPushButton("Needs Work")
+        self.thumbs_down_btn.setObjectName("secondary")
+        self.thumbs_down_btn.setToolTip("This output needs improvement")
+        self.thumbs_down_btn.clicked.connect(self._on_thumbs_down)
+        self.thumbs_down_btn.setVisible(False)
+        right_header.addWidget(self.thumbs_down_btn)
         
         right_layout.addLayout(right_header)
         
@@ -876,12 +931,14 @@ class MainWindow(QMainWindow):
             self.variable_form.set_template(template)
             self.generate_btn.setEnabled(True)
             self.render_template_btn.setEnabled(True)
+            self.improve_template_btn.setEnabled(True)
         else:
             # Folder clicked - clear selection
             self.current_template = None
             self.variable_form.clear()
             self.generate_btn.setEnabled(False)
             self.render_template_btn.setEnabled(False)
+            self.improve_template_btn.setEnabled(False)
     
     def _on_tree_item_double_clicked(self, item: QTreeWidgetItem, column: int):
         """Handle tree item double click."""
@@ -971,6 +1028,59 @@ class MainWindow(QMainWindow):
         dialog.template_saved.connect(self._on_template_saved)
         dialog.exec()
     
+    def _improve_template(self):
+        """Improve the selected template using AI based on accumulated feedback."""
+        if not self.current_template:
+            return
+        
+        # Check LLM status
+        server = get_llm_server()
+        if not server.is_running():
+            reply = QMessageBox.question(
+                self,
+                "LLM Not Running",
+                "The LLM server is not running. Would you like to start it?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                success, message = server.start()
+                if not success:
+                    QMessageBox.critical(self, "Error", message)
+                    return
+                self._check_llm_status()
+            else:
+                return
+        
+        # Show improvement dialog
+        dialog = TemplateImproveDialog(self.current_template, parent=self)
+        dialog.changes_applied.connect(self._on_improvement_applied)
+        dialog.exec()
+    
+    def _on_improvement_applied(self, new_content: str):
+        """Handle when user applies improved template content."""
+        if not self.current_template:
+            return
+        
+        # Create a copy of the template with improved content for editing
+        # Don't modify the original until user explicitly saves
+        from automatr.core.templates import Template
+        improved_template = Template(
+            name=self.current_template.name,
+            content=new_content,
+            description=self.current_template.description,
+            trigger=self.current_template.trigger,
+            variables=list(self.current_template.variables),
+            refinements=[],  # Clear refinements since they've been addressed
+        )
+        # Preserve the file path so it saves to the same location
+        improved_template._path = self.current_template._path
+        
+        # Open editor for final review - user must explicitly save
+        dialog = TemplateEditor(improved_template, parent=self)
+        dialog.template_saved.connect(self._on_template_saved)
+        dialog.exec()
+    
     def _delete_template(self):
         """Delete the selected template."""
         if not self.current_template:
@@ -997,6 +1107,7 @@ class MainWindow(QMainWindow):
                 self.variable_form.clear()
                 self.generate_btn.setEnabled(False)
                 self.render_template_btn.setEnabled(False)
+                self.improve_template_btn.setEnabled(False)
                 self._load_templates()
                 
                 # Auto-sync Espanso if enabled and template had a trigger
@@ -1114,6 +1225,17 @@ class MainWindow(QMainWindow):
         self.generate_btn.setText("Generating...")
         self.output_text.clear()
         
+        # Show stop button and generating indicator
+        self.stop_gen_btn.setVisible(True)
+        self.generating_label.setVisible(True)
+        self._gen_dot_count = 0
+        self._gen_timer.start(500)
+        
+        # Hide feedback buttons and store prompt for later feedback
+        self._hide_feedback_buttons()
+        self._last_prompt = prompt
+        self._last_output = None
+        
         # Start generation in background
         self.worker = GenerationWorker(prompt, stream=True)
         self.worker.token_received.connect(self._on_token_received)
@@ -1133,6 +1255,9 @@ class MainWindow(QMainWindow):
         # Display in output
         self.output_text.setPlainText(rendered)
         
+        # Hide feedback buttons - this is not AI-generated
+        self._hide_feedback_buttons()
+        
         # Auto-copy to clipboard
         QApplication.clipboard().setText(rendered)
         self.status_bar.showMessage("Template copied to clipboard", 3000)
@@ -1150,11 +1275,27 @@ class MainWindow(QMainWindow):
         self.generate_btn.setEnabled(True)
         self.generate_btn.setText("Generate")
         self.status_bar.showMessage("Generation complete", 3000)
+        
+        # Hide stop button and generating indicator
+        self._gen_timer.stop()
+        self.stop_gen_btn.setVisible(False)
+        self.generating_label.setVisible(False)
+        
+        # Store output and show feedback buttons
+        self._last_output = result
+        self._show_feedback_buttons()
     
     def _on_generation_error(self, error: str):
         """Handle generation error."""
         self.generate_btn.setEnabled(True)
         self.generate_btn.setText("Generate")
+        
+        # Hide stop button and generating indicator
+        self._gen_timer.stop()
+        self.stop_gen_btn.setVisible(False)
+        self.generating_label.setVisible(False)
+        
+        self._hide_feedback_buttons()
         QMessageBox.critical(self, "Generation Error", error)
     
     def _copy_output(self):
@@ -1162,11 +1303,83 @@ class MainWindow(QMainWindow):
         text = self.output_text.toPlainText()
         if text:
             QApplication.clipboard().setText(text)
-            self.status_bar.showMessage("Copied to clipboard", 2000)
+            self.copy_btn.setText("Copied!")
+            QTimer.singleShot(2000, lambda: self.copy_btn.setText("Copy"))
+    
+    def _stop_generation(self):
+        """Stop the current generation."""
+        if self.worker and self.worker.isRunning():
+            self.worker.stop()
+            self.status_bar.showMessage("Generation stopped", 3000)
+    
+    def _update_generating_dots(self):
+        """Update the animated dots on the generating label."""
+        self._gen_dot_count = (self._gen_dot_count + 1) % 4
+        dots = "." * (self._gen_dot_count + 1)
+        self.generating_label.setText(f"Generating{dots}")
     
     def _clear_output(self):
         """Clear the output pane."""
         self.output_text.clear()
+        self._hide_feedback_buttons()
+
+    def _show_feedback_buttons(self):
+        """Show the feedback buttons after AI generation."""
+        self.thumbs_up_btn.setVisible(True)
+        self.thumbs_down_btn.setVisible(True)
+    
+    def _hide_feedback_buttons(self):
+        """Hide the feedback buttons."""
+        self.thumbs_up_btn.setVisible(False)
+        self.thumbs_down_btn.setVisible(False)
+    
+    def _on_thumbs_up(self):
+        """Handle thumbs-up feedback."""
+        if not self.current_template or not self._last_prompt or not self._last_output:
+            return
+        
+        feedback_manager = get_feedback_manager()
+        feedback_manager.add(
+            template_name=self.current_template.name,
+            prompt=self._last_prompt,
+            output=self._last_output,
+            rating="up",
+        )
+        
+        self._hide_feedback_buttons()
+        self.status_bar.showMessage("Thanks for the feedback!", 2000)
+    
+    def _on_thumbs_down(self):
+        """Handle thumbs-down feedback with optional correction."""
+        if not self.current_template or not self._last_prompt or not self._last_output:
+            return
+        
+        # Ask for optional correction
+        correction, ok = QInputDialog.getMultiLineText(
+            self,
+            "Feedback",
+            "What should have been different? (optional)",
+            "",
+        )
+        
+        # User cancelled - still record the thumbs-down without correction
+        feedback_manager = get_feedback_manager()
+        feedback_manager.add(
+            template_name=self.current_template.name,
+            prompt=self._last_prompt,
+            output=self._last_output,
+            rating="down",
+            correction=correction if ok else None,
+        )
+        
+        # If correction provided, add it to template refinements and save
+        if ok and correction and correction.strip():
+            self.current_template.refinements.append(correction.strip())
+            manager = get_template_manager()
+            manager.save(self.current_template)
+        
+        self._hide_feedback_buttons()
+        self.status_bar.showMessage("Thanks for the feedback!", 2000)
 
 
 def run_gui() -> int:
