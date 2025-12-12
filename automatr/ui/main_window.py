@@ -6,8 +6,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QByteArray, QTimer
-from PyQt6.QtGui import QAction, QKeySequence, QDesktopServices, QShortcut, QWheelEvent, QFont, QCloseEvent
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QByteArray, QTimer, QRect
+from PyQt6.QtGui import QAction, QKeySequence, QDesktopServices, QShortcut, QWheelEvent, QFont, QCloseEvent, QGuiApplication
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -261,7 +261,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"Automatr v{__version__}")
-        self.setMinimumSize(900, 600)
+        self.setMinimumSize(600, 400)  # Allow proper window snapping on all screen sizes
         
         config = get_config()
         self.resize(config.ui.window_width, config.ui.window_height)
@@ -823,20 +823,63 @@ class MainWindow(QMainWindow):
         self.llm_status_label = QLabel("LLM: Checking...")
         self.status_bar.addPermanentWidget(self.llm_status_label)
     
+    def _is_geometry_visible(self, geometry_data: QByteArray) -> bool:
+        """Check if restored geometry would be visible on any connected screen.
+        
+        Uses a 50% overlap threshold - the window must have at least 50% of its
+        area visible on some screen to be considered valid.
+        """
+        # Temporarily restore to get the rect, then we'll validate
+        # Save current geometry first
+        current_geo = self.saveGeometry()
+        self.restoreGeometry(geometry_data)
+        window_rect = self.frameGeometry()
+        # Restore original
+        self.restoreGeometry(current_geo)
+        
+        # Check overlap with each screen
+        for screen in QGuiApplication.screens():
+            screen_rect = screen.availableGeometry()
+            intersection = window_rect.intersected(screen_rect)
+            
+            if not intersection.isEmpty():
+                # Calculate overlap percentage
+                window_area = window_rect.width() * window_rect.height()
+                if window_area > 0:
+                    overlap_area = intersection.width() * intersection.height()
+                    overlap_ratio = overlap_area / window_area
+                    if overlap_ratio >= 0.5:  # At least 50% visible
+                        return True
+        
+        return False
+    
     def _restore_state(self):
         """Restore window and app state from config."""
         config = get_config()
+        geometry_valid = False
         
-        # Restore window geometry
+        # Restore window geometry with screen validation
         if config.ui.window_geometry:
             try:
                 geometry_bytes = base64.b64decode(config.ui.window_geometry)
-                self.restoreGeometry(QByteArray(geometry_bytes))
+                geometry_data = QByteArray(geometry_bytes)
+                
+                # Validate geometry is on a visible screen
+                if self._is_geometry_visible(geometry_data):
+                    self.restoreGeometry(geometry_data)
+                    geometry_valid = True
+                else:
+                    # Clear invalid geometry from config
+                    config.ui.window_geometry = ""
+                    config.ui.window_maximized = False
+                    save_config(config)
             except Exception:
-                pass  # Fall back to default geometry
+                # Clear corrupted geometry
+                config.ui.window_geometry = ""
+                save_config(config)
         
-        # Restore maximized state
-        if config.ui.window_maximized:
+        # Only restore maximized state if geometry was valid
+        if geometry_valid and config.ui.window_maximized:
             self.setWindowState(Qt.WindowState.WindowMaximized)
         
         # Restore expanded folders in template tree
