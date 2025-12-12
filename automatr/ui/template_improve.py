@@ -25,36 +25,81 @@ from PyQt6.QtWidgets import (
 
 from automatr.core.templates import Template
 from automatr.core.feedback import build_improvement_prompt
-from automatr.integrations.llm import get_llm_client
+from automatr.integrations.llm import get_llm_client, get_llm_server
 
 
 class ImprovementWorker(QThread):
-    """Background worker for LLM-based template improvement."""
+    """Background worker for LLM-based template improvement with retry on server startup."""
     
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
+    # Emitted when waiting for server: (attempt, max_attempts)
+    waiting_for_server = pyqtSignal(int, int)
+    
+    # Retry settings for server startup scenarios
+    MAX_RETRY_ATTEMPTS = 3
+    RETRY_DELAY_SECONDS = 3.0
     
     def __init__(self, prompt: str):
         super().__init__()
         self.prompt = prompt
+        self._stopped = False
+    
+    def stop(self):
+        """Request improvement to stop."""
+        self._stopped = True
+    
+    def _is_connection_error(self, error: Exception) -> bool:
+        """Check if error is a connection issue (server not ready)."""
+        error_str = str(error).lower()
+        return (
+            isinstance(error, ConnectionError)
+            or "cannot connect" in error_str
+            or "connection refused" in error_str
+            or "connection error" in error_str
+        )
     
     def run(self):
-        try:
-            client = get_llm_client()
-            result = client.generate(self.prompt)
-            # Clean up result - remove any markdown code blocks if present
-            result = result.strip()
-            if result.startswith("```"):
-                lines = result.split("\n")
-                # Remove first line (```markdown or similar)
-                lines = lines[1:]
-                # Remove last line if it's ```
-                if lines and lines[-1].strip() == "```":
-                    lines = lines[:-1]
-                result = "\n".join(lines)
-            self.finished.emit(result)
-        except Exception as e:
-            self.error.emit(str(e))
+        import time
+        client = get_llm_client()
+        last_error = None
+        
+        for attempt in range(1, self.MAX_RETRY_ATTEMPTS + 1):
+            if self._stopped:
+                return
+            
+            try:
+                result = client.generate(self.prompt)
+                # Clean up result - remove any markdown code blocks if present
+                result = result.strip()
+                if result.startswith("```"):
+                    lines = result.split("\n")
+                    # Remove first line (```markdown or similar)
+                    lines = lines[1:]
+                    # Remove last line if it's ```
+                    if lines and lines[-1].strip() == "```":
+                        lines = lines[:-1]
+                    result = "\n".join(lines)
+                self.finished.emit(result)
+                return  # Success, exit
+                
+            except Exception as e:
+                if self._stopped:
+                    return
+                
+                last_error = e
+                
+                # Only retry on connection errors (server starting)
+                if self._is_connection_error(e) and attempt < self.MAX_RETRY_ATTEMPTS:
+                    self.waiting_for_server.emit(attempt, self.MAX_RETRY_ATTEMPTS)
+                    time.sleep(self.RETRY_DELAY_SECONDS)
+                else:
+                    # Real error or exhausted retries
+                    break
+        
+        # All retries failed or non-connection error
+        if last_error and not self._stopped:
+            self.error.emit(str(last_error))
 
 
 class TemplateImproveDialog(QDialog):
@@ -176,7 +221,7 @@ class TemplateImproveDialog(QDialog):
         
         self.discard_btn = QPushButton("Discard")
         self.discard_btn.setObjectName("secondary")
-        self.discard_btn.clicked.connect(self.reject)
+        self.discard_btn.clicked.connect(self._on_discard_clicked)
         button_layout.addWidget(self.discard_btn)
         
         self.regenerate_btn = QPushButton("Regenerate with Notes")
@@ -196,10 +241,34 @@ class TemplateImproveDialog(QDialog):
     
     def _generate_improvement(self, additional_notes: str = ""):
         """Generate improved template using LLM."""
+        # Check LLM status first
+        server = get_llm_server()
+        if not server.is_running():
+            reply = QMessageBox.question(
+                self,
+                "LLM Not Running",
+                "The LLM server is not running. Would you like to start it?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                self.status_label.setText("Starting LLM server...")
+                success, message = server.start()
+                if not success:
+                    QMessageBox.critical(self, "Error", message)
+                    self.status_label.setText("Server failed to start")
+                    self.regenerate_btn.setEnabled(True)
+                    return
+            else:
+                self.status_label.setText("Server not started")
+                self.regenerate_btn.setEnabled(True)
+                return
+        
         self.status_label.setText("Generating improvements...")
         self.improved_text.setPlainText("")
         self.apply_btn.setEnabled(False)
         self.regenerate_btn.setEnabled(False)
+        self.discard_btn.setText("Cancel")  # Change to Cancel during generation
         
         prompt = build_improvement_prompt(
             template_content=self.original_content,
@@ -210,6 +279,7 @@ class TemplateImproveDialog(QDialog):
         self.worker = ImprovementWorker(prompt)
         self.worker.finished.connect(self._on_improvement_finished)
         self.worker.error.connect(self._on_improvement_error)
+        self.worker.waiting_for_server.connect(self._on_waiting_for_server)
         self.worker.start()
     
     def _on_improvement_finished(self, result: str):
@@ -219,12 +289,26 @@ class TemplateImproveDialog(QDialog):
         self.status_label.setText("Review and edit the improvements, then save")
         self.apply_btn.setEnabled(True)
         self.regenerate_btn.setEnabled(True)
+        self.discard_btn.setText("Discard")  # Reset button text
     
     def _on_improvement_error(self, error: str):
         """Handle improvement generation error."""
         self.status_label.setText(f"Error: {error}")
         self.regenerate_btn.setEnabled(True)
+        self.discard_btn.setText("Discard")  # Reset button text
         QMessageBox.critical(self, "Generation Error", error)
+    
+    def _on_waiting_for_server(self, attempt: int, max_attempts: int):
+        """Handle waiting for server to become ready."""
+        self.status_label.setText(f"Model starting... (attempt {attempt}/{max_attempts})")
+    
+    def _on_discard_clicked(self):
+        """Handle discard/cancel button click."""
+        # Stop worker if running (Cancel mode)
+        if self.worker and self.worker.isRunning():
+            self.worker.stop()
+            self.status_label.setText("Canceled")
+        self.reject()
     
     def _regenerate_with_notes(self):
         """Regenerate with additional user notes."""

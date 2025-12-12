@@ -49,11 +49,17 @@ from automatr.ui.template_improve import TemplateImproveDialog
 
 
 class GenerationWorker(QThread):
-    """Background worker for LLM generation."""
+    """Background worker for LLM generation with retry on server startup."""
     
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
     token_received = pyqtSignal(str)
+    # Emitted when waiting for server: (attempt, max_attempts)
+    waiting_for_server = pyqtSignal(int, int)
+    
+    # Retry settings for server startup scenarios
+    MAX_RETRY_ATTEMPTS = 3
+    RETRY_DELAY_SECONDS = 3.0
     
     def __init__(self, prompt: str, stream: bool = True):
         super().__init__()
@@ -65,25 +71,56 @@ class GenerationWorker(QThread):
         """Request generation to stop."""
         self._stopped = True
     
+    def _is_connection_error(self, error: Exception) -> bool:
+        """Check if error is a connection issue (server not ready)."""
+        error_str = str(error).lower()
+        return (
+            isinstance(error, ConnectionError)
+            or "cannot connect" in error_str
+            or "connection refused" in error_str
+            or "connection error" in error_str
+        )
+    
     def run(self):
-        try:
-            client = get_llm_client()
+        import time
+        client = get_llm_client()
+        last_error = None
+        
+        for attempt in range(1, self.MAX_RETRY_ATTEMPTS + 1):
+            if self._stopped:
+                return
             
-            if self.stream:
-                result = []
-                for token in client.generate_stream(self.prompt):
-                    if self._stopped:
-                        break
-                    result.append(token)
-                    self.token_received.emit(token)
-                self.finished.emit("".join(result))
-            else:
-                result = client.generate(self.prompt)
-                self.finished.emit(result)
+            try:
+                if self.stream:
+                    result = []
+                    for token in client.generate_stream(self.prompt):
+                        if self._stopped:
+                            break
+                        result.append(token)
+                        self.token_received.emit(token)
+                    self.finished.emit("".join(result))
+                else:
+                    result = client.generate(self.prompt)
+                    self.finished.emit(result)
+                return  # Success, exit
                 
-        except Exception as e:
-            if not self._stopped:
-                self.error.emit(str(e))
+            except Exception as e:
+                if self._stopped:
+                    return
+                
+                last_error = e
+                
+                # Only retry on connection errors (server starting)
+                if self._is_connection_error(e) and attempt < self.MAX_RETRY_ATTEMPTS:
+                    self.waiting_for_server.emit(attempt, self.MAX_RETRY_ATTEMPTS)
+                    time.sleep(self.RETRY_DELAY_SECONDS)
+                else:
+                    # Real error or exhausted retries
+                    break
+        
+        # All retries failed or non-connection error
+        if last_error and not self._stopped:
+            self.error.emit(str(last_error))
 
 
 class ModelCopyWorker(QThread):
@@ -1351,6 +1388,7 @@ class MainWindow(QMainWindow):
         self.stop_gen_btn.setVisible(True)
         self.generating_label.setVisible(True)
         self._gen_dot_count = 0
+        self._waiting_for_server = False  # Track server waiting state
         self._gen_timer.start(500)
         
         # Store prompt for reference
@@ -1362,6 +1400,7 @@ class MainWindow(QMainWindow):
         self.worker.token_received.connect(self._on_token_received)
         self.worker.finished.connect(self._on_generation_finished)
         self.worker.error.connect(self._on_generation_error)
+        self.worker.waiting_for_server.connect(self._on_waiting_for_server)
         self.worker.start()
     
     def _render_template_only(self):
@@ -1382,6 +1421,10 @@ class MainWindow(QMainWindow):
     
     def _on_token_received(self, token: str):
         """Handle streaming token."""
+        # Clear waiting state on first token
+        if getattr(self, '_waiting_for_server', False):
+            self._waiting_for_server = False
+            self.generating_label.setText("Generating...")
         cursor = self.output_text.textCursor()
         cursor.movePosition(cursor.MoveOperation.End)
         cursor.insertText(token)
@@ -1414,6 +1457,15 @@ class MainWindow(QMainWindow):
         
         QMessageBox.critical(self, "Generation Error", error)
     
+    def _on_waiting_for_server(self, attempt: int, max_attempts: int):
+        """Handle waiting for server to become ready."""
+        self._waiting_for_server = True
+        self.generating_label.setText(f"Model starting... (attempt {attempt}/{max_attempts})")
+        self.status_bar.showMessage(
+            f"Waiting for model to start (attempt {attempt}/{max_attempts})...", 
+            5000
+        )
+    
     def _copy_output(self):
         """Copy output to clipboard."""
         text = self.output_text.toPlainText()
@@ -1432,7 +1484,9 @@ class MainWindow(QMainWindow):
         """Update the animated dots on the generating label."""
         self._gen_dot_count = (self._gen_dot_count + 1) % 4
         dots = "." * (self._gen_dot_count + 1)
-        self.generating_label.setText(f"Generating{dots}")
+        # Don't overwrite "Model starting" message
+        if not getattr(self, '_waiting_for_server', False):
+            self.generating_label.setText(f"Generating{dots}")
     
     def _clear_output(self):
         """Clear the output pane."""

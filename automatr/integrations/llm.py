@@ -62,6 +62,33 @@ class LLMClient:
         except requests.RequestException:
             return False
     
+    def wait_for_readiness(
+        self,
+        max_attempts: int = 3,
+        delay_seconds: float = 3.0,
+        on_retry: Optional[callable] = None,
+    ) -> Tuple[bool, str]:
+        """Wait for the server to become ready with retries.
+        
+        Args:
+            max_attempts: Number of attempts before giving up.
+            delay_seconds: Seconds to wait between attempts.
+            on_retry: Optional callback(attempt, max_attempts) called before each retry.
+            
+        Returns:
+            Tuple of (ready, error_message). If ready, error_message is empty.
+        """
+        for attempt in range(1, max_attempts + 1):
+            if self.health_check():
+                return True, ""
+            
+            if attempt < max_attempts:
+                if on_retry:
+                    on_retry(attempt, max_attempts)
+                time.sleep(delay_seconds)
+        
+        return False, f"Server not ready after {max_attempts} attempts"
+    
     def generate(
         self,
         prompt: str,
@@ -384,7 +411,7 @@ class LLMServerManager:
             )
             
             # Wait for server to be ready
-            for _ in range(30):  # 15 seconds timeout
+            for _ in range(60):  # 30 seconds timeout
                 time.sleep(0.5)
                 
                 # Check if process died
