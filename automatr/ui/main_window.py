@@ -46,6 +46,7 @@ from automatr.ui.theme import get_theme_stylesheet
 from automatr.ui.template_editor import TemplateEditor
 from automatr.ui.llm_settings import LLMSettingsDialog
 from automatr.ui.template_improve import TemplateImproveDialog
+from automatr.ui.template_generate import GenerationPromptEditor, ImprovementPromptEditor
 
 
 class GenerationWorker(QThread):
@@ -306,6 +307,19 @@ class MainWindow(QMainWindow):
         quit_action.setShortcut(QKeySequence.StandardKey.Quit)
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
+        
+        # AI Instructions menu (submenu under File)
+        ai_instructions_menu = file_menu.addMenu("AI &Instructions")
+        
+        edit_generate_action = QAction("Edit &Generate Template Instructions...", self)
+        edit_generate_action.triggered.connect(self._edit_generate_instructions)
+        ai_instructions_menu.addAction(edit_generate_action)
+        
+        edit_improve_action = QAction("Edit &Improve Template Instructions...", self)
+        edit_improve_action.triggered.connect(self._edit_improve_instructions)
+        ai_instructions_menu.addAction(edit_improve_action)
+        
+        file_menu.addSeparator()
         
         # LLM menu
         llm_menu = menubar.addMenu("&LLM")
@@ -1117,6 +1131,30 @@ class MainWindow(QMainWindow):
         """Show the LLM settings dialog."""
         dialog = LLMSettingsDialog(self)
         dialog.exec()
+    
+    def _edit_generate_instructions(self):
+        """Edit the AI instructions for template generation."""
+        reply = QMessageBox.question(
+            self,
+            "Edit Generation Instructions?",
+            "Editing these instructions will affect how all future template generation works.\n\nAre you sure you want to continue?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            dialog = GenerationPromptEditor(self)
+            dialog.exec()
+    
+    def _edit_improve_instructions(self):
+        """Edit the AI instructions for template improvement."""
+        reply = QMessageBox.question(
+            self,
+            "Edit Improvement Instructions?",
+            "Editing these instructions will affect how all future template improvements are generated.\n\nAre you sure you want to continue?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            dialog = ImprovementPromptEditor(self)
+            dialog.exec()
     
     def _new_template(self):
         """Create a new template."""

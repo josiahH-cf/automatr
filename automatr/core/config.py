@@ -152,6 +152,76 @@ def reset_improvement_prompt() -> bool:
     return save_improvement_prompt(DEFAULT_IMPROVEMENT_PROMPT)
 
 
+# --- Generation Prompt System ---
+
+def get_generation_prompt_path() -> Path:
+    """Get the path to the generation prompt template file."""
+    return get_config_dir() / "generation_prompt.txt"
+
+
+# Default generation prompt template with placeholders
+DEFAULT_GENERATION_PROMPT = """You are a prompt template creator. Generate a reusable prompt template based on the user's description.
+
+USER DESCRIPTION:
+{{description}}
+
+REQUIRED VARIABLES (must appear in output as {{variable_name}}):
+{{variables}}
+
+INSTRUCTIONS:
+- Create a clear, focused prompt template for the described task
+- Include ALL required variables using exactly {{variable_name}} syntax
+- Place variables in logical, deterministic positions
+- Keep the template concise and actionable
+- Use a clear role statement at the start (e.g., "You are a...")
+- Include numbered output sections if multiple outputs are needed
+- Do NOT include any explanations or commentary
+- Output ONLY the template text, ready to use
+
+OUTPUT THE TEMPLATE NOW:"""
+
+
+def load_generation_prompt() -> str:
+    """Load the generation prompt template from file.
+    
+    Returns the default if file doesn't exist.
+    """
+    path = get_generation_prompt_path()
+    if path.exists():
+        try:
+            return path.read_text(encoding="utf-8")
+        except OSError:
+            pass
+    return DEFAULT_GENERATION_PROMPT
+
+
+def save_generation_prompt(prompt: str) -> bool:
+    """Save the generation prompt template to file.
+    
+    Args:
+        prompt: The prompt template text.
+        
+    Returns:
+        True if saved successfully, False otherwise.
+    """
+    path = get_generation_prompt_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(prompt, encoding="utf-8")
+        return True
+    except OSError:
+        return False
+
+
+def reset_generation_prompt() -> bool:
+    """Reset the generation prompt to the default.
+    
+    Returns:
+        True if reset successfully, False otherwise.
+    """
+    return save_generation_prompt(DEFAULT_GENERATION_PROMPT)
+
+
 @dataclass
 class LLMConfig:
     """Configuration for the local LLM server."""

@@ -180,3 +180,38 @@ def build_improvement_prompt(template_content: str, refinements: List[str], addi
     prompt = prompt.replace("{{additional_notes}}", notes_text)
     
     return prompt
+
+
+def build_generation_prompt(description: str, expected_variables: List[str]) -> str:
+    """Build a prompt asking the LLM to generate a new template.
+    
+    Loads the generation prompt template from the config directory and replaces
+    placeholders with actual values.
+    
+    Args:
+        description: User's description of what the template should do.
+        expected_variables: List of variable names the user wants in the template.
+    
+    Returns:
+        A prompt string for the LLM.
+    """
+    from automatr.core.config import load_generation_prompt
+    
+    # Load custom prompt template (or default)
+    prompt_template = load_generation_prompt()
+    
+    # Build variables section
+    variables_text = ""
+    if expected_variables:
+        variables_lines = []
+        for var in expected_variables:
+            variables_lines.append(f"- {{{{  {var}  }}}} ")
+        variables_text = "\n".join(variables_lines)
+    else:
+        variables_text = "(No specific variables required - use appropriate placeholders)"
+    
+    # Replace placeholders in the template
+    prompt = prompt_template.replace("{{description}}", description)
+    prompt = prompt.replace("{{variables}}", variables_text)
+    
+    return prompt

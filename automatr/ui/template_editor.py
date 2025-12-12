@@ -1,6 +1,6 @@
 """Template editor widget for Automatr."""
 
-from typing import Optional
+from typing import List, Optional
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -191,8 +191,18 @@ class TemplateEditor(QDialog):
         self._update_refinements_visibility()
         
         # Content section
+        content_header = QHBoxLayout()
         content_label = QLabel("Content (use {{variable_name}} for placeholders):")
-        layout.addWidget(content_label)
+        content_header.addWidget(content_label)
+        content_header.addStretch()
+        
+        generate_btn = QPushButton("Generate with AI...")
+        generate_btn.setObjectName("secondary")
+        generate_btn.setToolTip("Use AI to generate template content from a description")
+        generate_btn.clicked.connect(self._generate_with_ai)
+        content_header.addWidget(generate_btn)
+        
+        layout.addLayout(content_header)
         
         self.content_edit = QPlainTextEdit()
         self.content_edit.setPlaceholderText(
@@ -356,3 +366,39 @@ class TemplateEditor(QDialog):
             self.accept()
         else:
             QMessageBox.critical(self, "Error", "Failed to save template.")
+    
+    def _generate_with_ai(self):
+        """Open the AI generation dialog and populate content."""
+        from automatr.ui.template_generate import TemplateGenerateDialog
+        
+        dialog = TemplateGenerateDialog(self)
+        dialog.content_generated.connect(self._on_content_generated)
+        dialog.exec()
+    
+    def _on_content_generated(self, content: str, found_variables: List[str]):
+        """Handle generated content from AI.
+        
+        Args:
+            content: The generated template content.
+            found_variables: List of variable names found in the content.
+        """
+        # Set the content
+        self.content_edit.setPlainText(content)
+        
+        # Add any new variables that were found
+        existing_names = {v.name for v in self.variables}
+        for var_name in found_variables:
+            if var_name not in existing_names:
+                self.variables.append(Variable(
+                    name=var_name,
+                    label=var_name.replace("_", " ").title(),
+                    default="",
+                    multiline=False,
+                ))
+        
+        self._refresh_var_list()
+        
+        # Create initial version if this is a new template with generated content
+        if not self.template and content:
+            manager = get_template_manager()
+            # We'll let the save process handle versioning when the user saves

@@ -209,14 +209,6 @@ class TemplateImproveDialog(QDialog):
         # Buttons
         button_layout = QHBoxLayout()
         
-        # Edit system prompt button (left side)
-        self.edit_prompt_btn = QPushButton("Edit AI Prompt...")
-        self.edit_prompt_btn.setObjectName("secondary")
-        self.edit_prompt_btn.setStyleSheet("background-color: #ffcccc;")
-        self.edit_prompt_btn.setToolTip("Customize the system prompt used for AI improvements")
-        self.edit_prompt_btn.clicked.connect(self._edit_system_prompt)
-        button_layout.addWidget(self.edit_prompt_btn)
-        
         button_layout.addStretch()
         
         self.discard_btn = QPushButton("Discard")
@@ -332,31 +324,6 @@ class TemplateImproveDialog(QDialog):
         if edited_content:
             self.changes_applied.emit(edited_content)
             self.accept()
-    
-    def _edit_system_prompt(self):
-        """Open dialog to edit the system improvement prompt."""
-        # Show confirmation dialog
-        reply = QMessageBox.question(
-            self,
-            "Edit AI Prompt?",
-            "Editing the AI prompt will affect how all future template improvements are generated.\n\nAre you sure you want to continue?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-        
-        if reply != QMessageBox.StandardButton.Yes:
-            return
-        
-        dialog = ImprovementPromptEditor(self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            # Prompt was saved, user might want to regenerate
-            reply = QMessageBox.question(
-                self,
-                "Regenerate?",
-                "System prompt updated. Would you like to regenerate the improvement with the new prompt?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-            if reply == QMessageBox.StandardButton.Yes:
-                self._generate_improvement(additional_notes=self.initial_feedback)
 
 
 class ImprovementPromptEditor(QDialog):
