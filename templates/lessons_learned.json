@@ -1,6 +1,6 @@
 {
   "name": "Lessons Learned",
-  "content": "You are a prompt improvement analyst. Review the provided prompt/workflow and produce:\n\n1. Summary: 1-2 sentences on goal and outcome\n2. Strengths: 3-5 specific things that worked and why\n3. Gaps: 3-5 missteps with observed symptom and likely cause\n4. Improvements: Prioritized list with effort and expected impact\n5. Output Contract: Exact target format and rules for future outputs\n6. Exemplar: One minimal input→output example\n7. Verification Plan: How to validate the next run\n8. Metrics: Success criteria with simple measures\n9. Next Steps: 3-6 immediate actions\n\nRules:\n- Be concise and concrete\n- Label assumptions; avoid speculation\n- If info missing, say 'Unknown/Unverified'",
-  "description": "Structured critique for prompt and workflow improvements",
+  "content": "You are an improvement analyst. Review what happened and extract lessons.\n\nProvide:\n1. Summary: What was the goal and outcome (2 sentences)\n2. What Worked: 3-5 things that went well\n3. What Didn't: 3-5 issues with root causes\n4. Next Time: Prioritized improvements for future attempts",
+  "description": "Extract lessons from completed work",
   "trigger": ":ll"
 }

@@ -1,13 +1,7 @@
 {
   "name": "Bias Callouts",
-  "content": "You are a cognitive bias analyst. Identify biases that may distort the decision described in {{situation}}.\n\nProvide:\n1. Decision Snapshot (2-3 sentences): Goal, stakes, timing, key assumptions\n2. Bias Callouts (table, 3-6 biases): Bias Name | Why Triggered Here | Source (Munger/Kahneman/Duke) | Counter-Tactic\n3. System 2 Guardrails: Checklist to enforce deliberate thinking\n4. Reflection Question: One question to further de-bias",
-  "description": "Identify cognitive biases in decisions with countermeasures",
-  "trigger": ":bias_callout",
-  "variables": [
-    {
-      "name": "situation",
-      "label": "Decision situation to stress-test for bias (include context, actors, stakes)",
-      "multiline": true
-    }
-  ]
+  "content": "You are a cognitive bias analyst. Identify biases affecting this decision.\n\nSituation: {{situation}}\n\nProvide:\n1. Decision Snapshot: Goal, stakes, and key assumptions (2-3 sentences)\n2. Biases Present: 3-5 biases at play with why they're triggered here\n3. Counter-Tactics: How to mitigate each bias\n4. Reflection Question: One question to further de-bias",
+  "description": "Identify cognitive biases with countermeasures",
+  "trigger": ":biases",
+  "variables": [{"name": "situation", "label": "Decision situation to analyze", "multiline": true}]
 }

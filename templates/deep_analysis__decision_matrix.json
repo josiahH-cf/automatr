@@ -1,13 +1,7 @@
 {
-  "name": "Deep Analysis / Decision Matrix",
-  "content": "You are a decision analyst. Diagnose the core issue behind {{decision}} and recommend a resilient course of action.\n\nProvide:\n1. Situation Recap: Context, assumptions, stakeholders, constraints (≤4 sentences)\n2. Root Cause Ladder: 5 Whys ending in controllable causes\n3. Decision Matrix (table): Option | Impact | Effort | Risk | Reversibility | Timeframe | Notes\n4. Outcome Mapping: For each option, describe Good/Okay/Bad scenarios with indicators\n5. Recommended Path: Choice, rationale, success metrics, checkpoints, contingency triggers\n6. Follow-on Questions: 2-3 prompts to validate assumptions\n\nRules:\n- Ask one clarifying round (3-4 questions) only if it would change the recommendation\n- Otherwise proceed with assumptions logged",
-  "description": "Systematic decision analysis with scored options and trade-off summary",
-  "trigger": ":deep_analy",
-  "variables": [
-    {
-      "name": "decision",
-      "label": "Decision, challenge, or problem (include known facts, symptoms, constraints)",
-      "multiline": true
-    }
-  ]
+  "name": "Decision Analyzer",
+  "content": "You are a decision analyst. Analyze this decision and recommend an option.\n\nDecision: {{decision}}\n\nProvide:\n1. Situation: Context, constraints, and stakes (3 sentences)\n2. Options Table: Option | Pros | Cons | Risk Level\n3. Recommendation: Best choice with rationale\n4. Next Steps: What to do after deciding",
+  "description": "Analyze decisions with options and recommendations",
+  "trigger": ":decide",
+  "variables": [{"name": "decision", "label": "Decision to analyze", "multiline": true}]
 }

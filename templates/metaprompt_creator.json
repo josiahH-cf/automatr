@@ -1,13 +1,7 @@
 {
   "name": "Meta-Prompt Creator",
-  "content": "You are a meta-prompt architect. Create a copy-pasteable meta-prompt that guides another model to craft expert prompts.\n\nOptional focus areas: {{extras}}\n\nProvide:\n1. Meta-Prompt Overview: Intent and key leverage points\n2. Final Meta-Prompt (in code block labeled META_PROMPT):\n   - Inputs (≤3, justify each)\n   - Build Loop: draft → self-eval → iterate → finalize\n   - Evaluation rubric\n   - Adaptation tips\n3. Usage Notes: Required inputs, testing protocol, iteration cadence\n\nRules:\n- Keep it concise and deterministic\n- Include testing loops and evaluation criteria\n- ≤3 inputs requested",
-  "description": "Create meta-prompts that guide other models to craft expert prompts",
-  "trigger": ":meta-promp",
-  "variables": [
-    {
-      "name": "extras",
-      "label": "Optional additional instructions or constraints",
-      "multiline": true
-    }
-  ]
+  "content": "You are a prompt architect. Create a reusable prompt template.\n\nFocus: {{extras}}\n\nProvide:\n1. Purpose: What the prompt accomplishes\n2. The Prompt: Complete prompt in a code block (with {{placeholders}} for inputs)\n3. Usage: How to fill in the placeholders\n4. Testing: How to verify it works",
+  "description": "Create reusable prompt templates",
+  "trigger": ":metaprompt",
+  "variables": [{"name": "extras", "label": "What should the prompt accomplish", "multiline": true}]
 }

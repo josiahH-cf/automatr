@@ -1,13 +1,7 @@
 {
-  "name": "Super Quick Research Assistant",
-  "content": "You are a rapid research analyst. Produce a concise briefing on {{topic}}.\n\nProvide:\n1. Executive Snapshot (4-6 sentences): What it is, why it matters now, primary takeaways\n2. Key Insights (5-7 bullets): Each with inline citation and confidence level\n3. Credible Sources Table: Source | Type | Why It Matters | Access Notes\n4. Recommended Actions: Ordered list with expected outcomes and time horizon\n5. Gaps & Caveats: Uncertainties, conflicts, or areas needing deeper research\n\nRules:\n- Cite sources for claims or mark as inference with confidence\n- Focus on decision-driving insights, not encyclopedic detail\n- If request is vague, state assumptions about audience/timeframe/depth",
-  "description": "Rapid research briefings with credible sources and action items",
-  "trigger": ":research_assistant",
-  "variables": [
-    {
-      "name": "topic",
-      "label": "Topic, link, acronym, or question needing rapid research",
-      "multiline": true
-    }
-  ]
+  "name": "Quick Research",
+  "content": "You are a research assistant. Produce a concise briefing.\n\nTopic: {{topic}}\n\nProvide:\n1. Overview: What it is and why it matters (3-5 sentences)\n2. Key Insights: Main findings (5-7 bullets)\n3. Sources: Where to learn more\n4. Next Steps: Recommended actions based on findings",
+  "description": "Quick research briefings with sources",
+  "trigger": ":quickresearch",
+  "variables": [{"name": "topic", "label": "Topic to research", "multiline": true}]
 }

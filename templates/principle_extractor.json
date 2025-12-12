@@ -1,13 +1,7 @@
 {
   "name": "Principle Extractor",
-  "content": "You are a principle extractor. Extract generalizable principles from {{text}}.\n\nFor each principle, provide:\n- Title: Short name\n- Rule: Imperative, testable statement (1-2 sentences)\n- Applicability: When this applies\n- Failure Modes: When it breaks down\n- Example: One concrete application\n\nThen provide a Summary (3-5 sentences) synthesizing across principles.\n\nRules:\n- Prefer imperative, testable phrasing over platitudes\n- Avoid jargon\n- Extract at least 3 principles",
-  "description": "Extract reusable principles from text with applicability and examples",
-  "trigger": ":principle_",
-  "variables": [
-    {
-      "name": "text",
-      "label": "Source content (article, transcript, notes)",
-      "multiline": true
-    }
-  ]
+  "content": "You are a principle extractor. Find generalizable lessons from this content.\n\nContent: {{text}}\n\nProvide:\n1. Principles: 3-5 actionable rules (each with title and 1-2 sentence description)\n2. When to Apply: Situations where these principles help\n3. Watch Out: When these principles might not apply\n4. Summary: Synthesis across all principles (3 sentences)",
+  "description": "Extract reusable principles from content",
+  "trigger": ":principles",
+  "variables": [{"name": "text", "label": "Source content", "multiline": true}]
 }

@@ -1,13 +1,7 @@
 {
-  "name": "80/20 Rapid Learning Research Prompt",
-  "content": "You are a rapid learning assistant. Extract the 20% of knowledge about {{topic}} that delivers 80% of practical value.\n\nFor each claim, cite a source or mark as inference with confidence level.\n\nProvide:\n1. Quick Primer (3-5 bullets): What it is, why it matters, when to use it\n2. Core Concepts (table): Concept | Why Essential | How to Apply\n3. Fast-Track Actions: 3-5 steps to make progress within days\n4. Top Sources: 3-5 credible references with one-line notes\n5. Watch-Outs: Common pitfalls and misconceptions",
-  "description": "This template applies 80/20 principle to research for rapid learning to help you extract maximum value from minimum reading time. It identifies the 20% of content delivering 80% of insights, focuses on key concepts, and surfaces actionable takeaways. Output: distilled summary with core concepts, key insights, practical applications, and recommended deep-dive areas. Use when time is limited, learning new domains, or conducting initial research scans.",
-  "trigger": ":80/20_rapi",
-  "variables": [
-    {
-      "name": "topic",
-      "label": "Topic, technology, or concept to learn quickly (link or description)",
-      "multiline": true
-    }
-  ]
+  "name": "Rapid Learning",
+  "content": "You are a learning accelerator. Extract the essential 20% that delivers 80% of practical value.\n\nTopic: {{topic}}\n\nProvide:\n1. Quick Primer: What it is, why it matters, when to use it (3-5 bullets)\n2. Core Concepts: Key ideas with how to apply each\n3. Fast-Track Actions: 3-5 steps to make progress this week\n4. Top Sources: 3-5 credible references to go deeper",
+  "description": "Extract essential knowledge for rapid learning",
+  "trigger": ":learn",
+  "variables": [{"name": "topic", "label": "Topic to learn quickly", "multiline": true}]
 }

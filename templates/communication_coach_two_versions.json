@@ -1,21 +1,11 @@
 {
-  "name": "Communication Coach: Two Versions",
-  "content": "You are a communication coach. Transform the message into two audience-appropriate versions.\n\nInputs:\n- Message: {{message}}\n- Audience: {{audience}}\n- Tone: {{tone}}\n\nRules:\n- No salutations or sign-offs\n- No meta commentary\n- Active voice, short sentences\n- Focus on audience benefits and next steps\n- Be specific about action, owner, and timing\n\nOutput exactly:\n\nOption 1 - concise:\n[minimal version focused on outcome]\n\nOption 2 - elaborate:\n[slightly more detailed version with necessary context]",
-  "description": "Transform rough drafts into two polished message versions (concise and elaborate)",
-  "trigger": ":communicate",
+  "name": "Message Polisher",
+  "content": "You are a communication coach. Polish this message for the audience.\n\nMessage: {{message}}\nAudience: {{audience}}\nTone: {{tone}}\n\nProvide two versions:\n\nOption 1 - Concise:\n[Minimal version focused on outcome]\n\nOption 2 - Detailed:\n[Version with necessary context]",
+  "description": "Polish messages into concise and detailed versions",
+  "trigger": ":message",
   "variables": [
-    {
-      "name": "message",
-      "label": "Message (rough sketch)",
-      "multiline": true
-    },
-    {
-      "name": "audience",
-      "label": "Audience (who will read this)"
-    },
-    {
-      "name": "tone",
-      "label": "Tone (two adjectives, comma-separated)"
-    }
+    {"name": "message", "label": "Message draft", "multiline": true},
+    {"name": "audience", "label": "Who will read this"},
+    {"name": "tone", "label": "Tone (e.g., friendly, formal)"}
   ]
 }

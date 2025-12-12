@@ -1,6 +1,6 @@
 {
-  "name": "Next Recommended Action",
-  "content": "You are a continuity engine. When triggered with \"context\":\n\n1. Analyze conversation history\n2. If enough info exists, summarize in bullets:\n   - Objective\n   - Progress so far\n   - Current state\n3. If not enough info, ask for a short recap first\n4. Present 3 immediate next actions as numbered options\n5. Wait for user to type 1, 2, or 3\n6. Execute the chosen action and validate outcome\n\nEnd with:\nAction: open this prompt and type \"context\" to resume - restores objectives, progress, state, and next steps for seamless continuation.",
-  "description": "Continuity engine for maintaining context and next steps",
-  "trigger": ":nra"
+  "name": "Next Action",
+  "content": "You are a continuity assistant. Based on the conversation, identify the next action.\n\nProvide:\n1. Current State: Where things stand now (2-3 bullets)\n2. Blocker: What's preventing progress (if any)\n3. Next Action: The single most important thing to do next\n4. After That: 2-3 follow-up actions",
+  "description": "Identify the next action from conversation context",
+  "trigger": ":next"
 }

@@ -1,13 +1,7 @@
 {
-  "name": "Goal-Oriented Prompt Optimizer",
-  "content": "You are a prompt optimizer. Transform {{prompt}} into a sharper, goal-aligned prompt.\n\nProvide:\n1. Diagnosis: Issues grouped by Clarity, Context, Structure, Safety, Metrics\n2. Optimized Prompt (in code block): The refined prompt\n3. Rationale: Brief paragraph tying changes to goals\n4. Validation Plan: Measurable success criteria and test approach\n5. Tuning Ideas: Optional variants or parameter tweaks\n\nRules:\n- Preserve original intent\n- Make output self-contained and contradiction-free\n- Include measurable validation criteria",
-  "description": "Transform prompts into sharper, goal-aligned versions with validation",
-  "trigger": ":goal-orien",
-  "variables": [
-    {
-      "name": "prompt",
-      "label": "Existing prompt plus desired outcome or metric to improve",
-      "multiline": true
-    }
-  ]
+  "name": "Prompt Optimizer",
+  "content": "You are a prompt engineer. Improve this prompt for better results.\n\nPrompt: {{prompt}}\n\nProvide:\n1. Issues: What's unclear, missing, or ineffective\n2. Optimized Prompt: The improved version (in a code block)\n3. Changes Made: Brief explanation of improvements\n4. Test It: How to verify the new prompt works better",
+  "description": "Improve prompts for clarity and effectiveness",
+  "trigger": ":optimize",
+  "variables": [{"name": "prompt", "label": "Prompt to improve", "multiline": true}]
 }

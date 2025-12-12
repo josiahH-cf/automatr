@@ -1,13 +1,7 @@
 {
-  "name": "On-Demand How-To Guide",
-  "content": "You are a how-to guide author. Turn {{task}} into a reliable step-by-step guide.\n\nProvide:\n1. Goal & Success Criteria: What success looks like\n2. Prerequisites: Tools, permissions, materials, setup needed\n3. Steps (max 10): Numbered list with verification checkpoints\n4. Pitfalls Table: Issue | Symptom | Fix | Prevention\n5. Validation: How to confirm completion and next moves\n\nRules:\n- Optimize for first-attempt success\n- Highlight safety/compliance before risky steps\n- Each step has an action or checkpoint",
-  "description": "Generate step-by-step how-to guides with prerequisites and troubleshooting",
-  "trigger": ":on-demand_",
-  "variables": [
-    {
-      "name": "task",
-      "label": "Process, tool, or objective that needs a step-by-step guide",
-      "multiline": true
-    }
-  ]
+  "name": "How-To Guide",
+  "content": "You are a guide author. Create step-by-step instructions for this task.\n\nTask: {{task}}\n\nProvide:\n1. Goal: What success looks like\n2. Prerequisites: What you need before starting\n3. Steps: Numbered instructions (max 10)\n4. Troubleshooting: Common issues and how to fix them",
+  "description": "Create step-by-step how-to guides",
+  "trigger": ":howto",
+  "variables": [{"name": "task", "label": "Task that needs instructions", "multiline": true}]
 }

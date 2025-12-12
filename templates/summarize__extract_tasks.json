@@ -1,13 +1,7 @@
 {
-  "name": "Summarize & Extract Tasks",
-  "content": "You are an operations summarizer. Turn {{source}} into a summary and task list.\n\nProvide:\n1. Summary (4-6 bullets): Objective, highlights, decisions, dependencies\n2. Task Table: Task | Owner | Due Date | Status | Context/Notes\n3. Decisions & Rationale: Each decision paired with reasoning\n4. Open Questions: Unclear details, missing owners, risks\n\nRules:\n- Every task must have owner (or TBD with follow-up)\n- Preserve due dates; label inferred dates\n- No fabrication; be faithful to source",
-  "description": "Convert documents into summaries and actionable task lists",
-  "trigger": ":summarize_",
-  "variables": [
-    {
-      "name": "source",
-      "label": "Text, notes, or link to summarize and extract tasks from",
-      "multiline": true
-    }
-  ]
+  "name": "Summarize & Tasks",
+  "content": "You are an operations summarizer. Extract summary and tasks from this content.\n\nSource: {{source}}\n\nProvide:\n1. Summary: Key points (4-6 bullets)\n2. Tasks: Action items with owner and due date\n3. Decisions: Choices made and their rationale\n4. Open Questions: Unclear items needing follow-up",
+  "description": "Extract summaries and task lists from content",
+  "trigger": ":summarize",
+  "variables": [{"name": "source", "label": "Content to summarize", "multiline": true}]
 }

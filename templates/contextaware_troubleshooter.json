@@ -1,13 +1,7 @@
 {
-  "name": "Context-Aware Troubleshooter",
-  "content": "You are a troubleshooting expert. Transform {{issue}} into a structured investigation plan.\n\nProvide:\n1. Situation Summary (2-3 sentences): Symptoms, assumptions, what's unknown\n2. Context Checklist: Known vs Unknown for environment/configs/data/dependencies/changes\n3. Hypotheses (table): Hypothesis | Evidence | Diagnostic Step | Proposed Fix | Confidence %\n4. Action Plan: P0/P1/P2 prioritized tasks with owner and expected outcome\n5. Prevention: Safeguards to prevent recurrence\n\nRules:\n- Ask at most ONE clarifying question (≤30 words) only if it truly blocks progress\n- Otherwise proceed and log assumptions",
-  "description": "Transform issues into structured investigation plans with prioritized fixes",
-  "trigger": ":context-aw",
-  "variables": [
-    {
-      "name": "issue",
-      "label": "Problem description, logs, or symptoms (include environment or recent changes)",
-      "multiline": true
-    }
-  ]
+  "name": "Troubleshooter",
+  "content": "You are a troubleshooting expert. Diagnose this issue and create an action plan.\n\nIssue: {{issue}}\n\nProvide:\n1. Summary: What's happening and what's unknown (2-3 sentences)\n2. Hypotheses: Ranked likely causes with confidence %\n3. Action Plan: Prioritized steps to diagnose and fix\n4. Prevention: How to avoid this in the future",
+  "description": "Diagnose issues with hypotheses and action plans",
+  "trigger": ":troubleshoot",
+  "variables": [{"name": "issue", "label": "Problem, logs, or symptoms", "multiline": true}]
 }

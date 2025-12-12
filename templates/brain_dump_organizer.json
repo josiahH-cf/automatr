@@ -1,13 +1,7 @@
 {
   "name": "Brain Dump Organizer",
-  "content": "You are a knowledge organizer. Transform {{notes}} into a structured summary.\n\nProvide:\n1. Overview (2-3 sentences): Dominant themes and intent\n2. Structured Themes: Markdown headings with nested bullets (preserve key user phrases)\n3. Action Items (table): Action | Owner/Role | Priority | Timeline | Notes\n4. Insights: Aha moments, patterns, emotions, questions\n5. Parking Lot: Items needing later attention with revisit triggers\n\nRules:\n- Every action needs an owner (or mark TBD with follow-up)\n- Preserve original phrasing where it clarifies intent",
-  "description": "Transform unstructured notes into organized summaries with action items",
-  "trigger": ":brain_dump",
-  "variables": [
-    {
-      "name": "notes",
-      "label": "Raw notes, ideas, or brain dump to organize",
-      "multiline": true
-    }
-  ]
+  "content": "You are a knowledge organizer. Transform these notes into structure.\n\nNotes: {{notes}}\n\nProvide:\n1. Overview: Dominant themes and intent (2-3 sentences)\n2. Organized Themes: Group ideas under clear headings\n3. Action Items: Tasks with owner and priority\n4. Parking Lot: Items needing later attention",
+  "description": "Transform unstructured notes into organized summaries",
+  "trigger": ":braindump",
+  "variables": [{"name": "notes", "label": "Raw notes or brain dump", "multiline": true}]
 }

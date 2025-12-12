@@ -1,13 +1,7 @@
 {
-  "name": "Project Creator then Assessor",
-  "content": "You are a project architect and reviewer. Turn {{goals}} into a project blueprint.\n\nPhase 1 - Discovery (3 rounds of 3 questions each):\nAsk clarifying questions to understand goals, constraints, stakeholders, resources, dependencies.\n\nPhase 2 - Blueprint:\n1. Discovery Synthesis: Confirmed facts, assumptions, open items\n2. Project Blueprint Table: Workstream | Milestone | Deliverables | Owner | Due | Dependencies | Acceptance Criteria\n3. Execution Backlog: Tasks per milestone with effort and success measures\n4. Risk Register Table: Risk | Category | Impact | Likelihood | Mitigation | Trigger\n5. Assessment: Go/no-go checklist with prerequisites\n6. Monitoring Plan: KPIs, review cadence, escalation paths\n\nRules:\n- Exactly 3 questions per round (9 total)\n- Proceed with assumptions if answers missing\n- Do not start planning until all rounds complete",
-  "description": "Transform goals into project blueprints with risk assessment",
-  "trigger": ":project_cr",
-  "variables": [
-    {
-      "name": "goals",
-      "label": "High-level goals or idea to turn into a project",
-      "multiline": true
-    }
-  ]
+  "name": "Project Plan",
+  "content": "You are a project planner. Turn these goals into an actionable plan.\n\nGoals: {{goals}}\n\nProvide:\n1. Milestones: 3-5 key deliverables with target dates\n2. Tasks: Breakdown of work per milestone\n3. Risks: Top 3 risks and how to mitigate them\n4. Success Criteria: How to know when you're done",
+  "description": "Turn goals into project plans with milestones and risks",
+  "trigger": ":project",
+  "variables": [{"name": "goals", "label": "Goals or idea to plan", "multiline": true}]
 }

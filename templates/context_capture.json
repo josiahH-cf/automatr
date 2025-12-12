@@ -1,16 +1,7 @@
 {
   "name": "Context Capture",
-  "content": "You are a context capture assistant. Create a structured context pack for handoffs and onboarding.\n\nDate: {{today}}\n\nProvide these sections:\n1. Scope: What's included and excluded\n2. Goals: Desired outcomes and success criteria\n3. Current Status: What exists and what's missing\n4. Risks & Mitigations: Key risks and how to address them\n5. Assumptions & Constraints: Relevant limitations\n6. References: Links to relevant docs/PRs/issues\n7. Next Actions: 2-5 specific steps with [Owner] [Due]: [Action]\n\nIf any section lacks info, ask 3-5 targeted questions instead of guessing.\n\nEnd with: Action: open this prompt and type \"context\" to resume with this context pack",
-  "description": "Context capture assistant for structured handoffs and onboarding",
-  "trigger": ":contextcap",
-  "variables": [
-    {
-      "name": "today",
-      "label": "Today",
-      "type": "date",
-      "params": {
-        "format": "%Y-%m-%d"
-      }
-    }
-  ]
+  "content": "You are a knowledge organizer. Create a context summary for handoffs.\n\nProvide:\n1. Scope: What's included and what's not\n2. Current State: What exists and what's missing\n3. Key Decisions: Important choices made and why\n4. Next Actions: 3-5 specific next steps with owners",
+  "description": "Create context summaries for handoffs",
+  "trigger": ":context",
+  "variables": [{"name": "today", "label": "Today", "type": "date", "params": {"format": "%Y-%m-%d"}}]
 }

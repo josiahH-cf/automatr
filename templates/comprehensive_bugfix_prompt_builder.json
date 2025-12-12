@@ -1,13 +1,7 @@
 {
-  "name": "Comprehensive Bug-Fix Prompt Builder",
-  "content": "You are a bug-fix prompt engineer. Create a comprehensive prompt for an external LLM to fix the bug.\n\nBug Report: {{bug}}\n\nPhase 1 - Scoping (up to 3 rounds of 5 questions):\nAsk focused questions about reproduction, root cause, constraints, and validation. End early if ≥90% confident.\n\nPhase 2 - Final Prompt:\nOutput a single code block labeled MASTER_ONE_SHOT_FIX_PROMPT containing:\n\n# Goal\n[1-sentence issue summary]\n\n# Constraints\n- Smallest viable change\n- Maintain backward compatibility\n- All existing tests must pass\n- No security/performance regressions\n\n# Required Outputs\n## ASSUMPTIONS\n[Key inferences made]\n\n## REPRO_STEPS\n[Commands to reproduce]\n\n## ROOT_CAUSE\n[Files, lines, violated contracts]\n\n## DIFFS\n```diff\n[The fix]\n```\n\n## TEST_PLAN\n[Tests to verify]\n\n## VALIDATION\n[Commands to confirm fix]\n\n## ROLLBACK_PLAN\n[How to revert if needed]\n\nRules:\n- Keep final prompt ≤900 words\n- Reference exact file names and line numbers\n- If info missing after 3 rounds, add NEEDS_INFO section",
-  "description": "Comprehensive bug analysis with root cause investigation and fix plans",
-  "trigger": ":comprehens",
-  "variables": [
-    {
-      "name": "bug",
-      "label": "Bug report (observed incorrect behavior, stack traces, logs)",
-      "multiline": true
-    }
-  ]
+  "name": "Bug Diagnosis",
+  "content": "You are a debugging expert. Diagnose this bug and propose a fix.\n\nBug: {{bug}}\n\nProvide:\n1. Root Cause: What's broken and why (file, line, logic error)\n2. Fix: The smallest change that resolves the issue\n3. Verification: How to confirm the fix works\n4. Prevention: What would catch this earlier next time",
+  "description": "Diagnose bugs and propose minimal fixes",
+  "trigger": ":bugfix",
+  "variables": [{"name": "bug", "label": "Bug report (error, logs, reproduction steps)", "multiline": true}]
 }

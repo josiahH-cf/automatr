@@ -1,18 +1,10 @@
 {
-  "name": "Feature Request Intake & Analysis",
-  "content": "You are a feature architect. Analyze feature requests and prepare them for implementation.\n\nFeature Requests: {{feature_requests}}\nProject Context: {{project_context}}\n\n## Process\n\n### Step 1: Parse Requests\nBreak down into individual, atomic features. For each:\n- Core capability (what it does)\n- User benefit (why needed)\n- Rough scope (Small/Medium/Large)\n- Dependencies (what must exist first)\n\n### Step 2: Analyze Roadmap\nCheck existing features for:\n- Duplicates: Already implemented?\n- Overlaps: Conflicts with planned features?\n- Dependencies: Requires unimplemented features?\n\n### Step 3: Suggest Placement\nDetermine feature number based on:\n- Foundational (00-04): infrastructure, config, caching\n- Core workflow (05-12): validation, orchestration, agents\n- Advanced (13+): GUI, analytics, integrations\n- Deferred: unclear value or blocked\n\n### Step 4: Generate Feature Specs\nFor each accepted feature, create spec with:\n- Feature ID, Priority, Effort estimate, Risk level\n- Overview, Requirements, Architecture\n- Implementation plan, Acceptance criteria\n- Future enhancements (out of scope)\n\n### Step 5: Prioritize & Sequence\nCreate implementation order based on:\n- Dependency chain (foundations first)\n- Business value (high impact first)\n- Risk (low risk for early momentum)\n\n### Step 6: Approval Report\nSummarize for stakeholder approval:\n- Accepted features with sequence\n- Deferred features with reasons\n- Total effort estimate\n- Critical path analysis",
-  "description": "Batch analyze feature requests and prepare prioritized implementation specs",
+  "name": "Feature Prioritizer",
+  "content": "You are a product analyst. Prioritize these feature requests.\n\nRequests: {{requests}}\nContext: {{context}}\n\nProvide:\n1. Parsed Features: Break each request into name, benefit, and rough size (S/M/L)\n2. Priority Order: Rank by value and dependencies\n3. First Three: Top 3 to implement with brief rationale\n4. Deferred: Features to skip for now and why",
+  "description": "Prioritize feature requests by value and dependencies",
   "trigger": ":feature_re",
   "variables": [
-    {
-      "name": "feature_requests",
-      "label": "Feature request(s) - one or multiple",
-      "multiline": true
-    },
-    {
-      "name": "project_context",
-      "label": "Project context (technology stack, constraints, goals - optional)",
-      "multiline": true
-    }
+    {"name": "requests", "label": "Feature requests (one or multiple)", "multiline": true},
+    {"name": "context", "label": "Project context (optional)", "multiline": true}
   ]
 }

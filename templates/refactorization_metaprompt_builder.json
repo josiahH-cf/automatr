@@ -1,13 +1,7 @@
 {
-  "name": "Refactorization Meta-Prompt Builder",
-  "content": "You are a refactorization prompt engineer. Create a meta-prompt to analyze and optimize a codebase.\n\nFocus Areas: {{focus}}\n\nPhase 1 - Discovery (3 rounds of 5 questions):\nAsk about scope, constraints, risk tolerance, testing requirements, and delivery expectations.\n\nPhase 2 - Risk Confirmation:\nSummarize proposed changes and potential breakages. Ask user to confirm:\n- \"YOLO\" = accept risky changes\n- \"SAFE: <exclusions>\" = exclude specific risky changes\n\nPhase 3 - Final Meta-Prompt:\nOutput a prompt for the implementer containing:\n\n# Role\nAnalyze codebase to identify optimizations, security flaws, and improvements.\n\n# Focus\n{{focus}}\n\n# Constraints\n- File ≤400 LOC, function ≤75 LOC\n- Backward compatibility unless approved\n- No secret logging or credential changes\n- Reuse-first; prefer extraction to large new modules\n\n# Required Analysis\n1. Code health: Dead code, inefficient patterns, outdated practices\n2. Security: Vulnerabilities, secrets handling, auth issues\n3. Performance: Hot paths, optimization opportunities\n4. Test coverage: Gaps, flaky tests, missing edge cases\n5. Structure: File splits, folder reorganization, module extraction\n6. Documentation: Updates needed to match current code\n\n# Required Outputs\n- WORKSPACE_SEARCH_RESULTS: Related existing code\n- DIFFS: Proposed changes with risk rating\n- TEST_PLAN: Tests to verify changes\n- VALIDATION: Commands to run\n- ROLLBACK_PLAN: How to revert\n\nRules:\n- Environment-agnostic (no local setup assumptions)\n- Prioritize: security > performance > reliability > maintainability",
-  "description": "Generate refactoring meta-prompts for systematic code improvement",
+  "name": "Code Improvement Analyzer",
+  "content": "You are a code reviewer. Analyze this code for improvements.\n\nFocus: {{focus}}\n\nProvide:\n1. Issues Found: List problems (dead code, security, performance, structure)\n2. Recommended Changes: Specific improvements ranked by impact\n3. Quick Wins: 2-3 changes that are low-effort, high-value",
+  "description": "Analyze code for improvements and quick wins",
   "trigger": ":refactoriz",
-  "variables": [
-    {
-      "name": "focus",
-      "label": "Focus areas (security, performance, testing, documentation, etc.)",
-      "multiline": true
-    }
-  ]
+  "variables": [{"name": "focus", "label": "Code or focus areas (security, performance, etc.)", "multiline": true}]
 }

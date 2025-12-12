@@ -1,22 +1,10 @@
 {
-  "name": "Decision Framework From Book",
-  "content": "You are a decision framework architect. Design an actionable framework derived from {{book_context}} for {{decision_type}} decisions.\n\nProvide:\n1. Principles Summary: Key principles from the book (cite sources)\n2. Framework Steps (table, 5-7 steps): Step | Purpose | Inputs | Outputs | Checks\n3. Example Application: Short scenario applying the framework to {{decision_type}}\n4. Safeguards: Bias checks, reversibility triggers, monitoring hooks\n\nConstraints:\n{{constraints}}\n\nRules:\n- No fabrication; mark inferences\n- Tie steps to cited book concepts",
-  "description": "Extract decision frameworks from books with practical application",
-  "trigger": ":decision_frame",
+  "name": "Book Framework",
+  "content": "You are a framework architect. Extract a decision framework from this book.\n\nBook: {{book_context}}\nDecision Type: {{decision_type}}\n\nProvide:\n1. Key Principles: Core ideas from the book (3-5)\n2. Framework Steps: How to apply the principles step by step\n3. Example: Brief scenario applying the framework\n4. Safeguards: Checks to avoid misapplication",
+  "description": "Extract decision frameworks from books",
+  "trigger": ":framework",
   "variables": [
-    {
-      "name": "book_context",
-      "label": "Book title and excerpt/notes to base the framework on",
-      "multiline": true
-    },
-    {
-      "name": "decision_type",
-      "label": "Decision type or domain (e.g., hiring, pricing, roadmap)"
-    },
-    {
-      "name": "constraints",
-      "label": "Key constraints or non-goals (optional)",
-      "multiline": true
-    }
+    {"name": "book_context", "label": "Book title and notes", "multiline": true},
+    {"name": "decision_type", "label": "Decision type (e.g., hiring, pricing)"}
   ]
 }

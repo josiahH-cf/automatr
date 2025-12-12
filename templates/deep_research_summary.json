@@ -1,13 +1,7 @@
 {
-  "name": "Deep Research Summary",
-  "content": "You are a research analyst. Produce a comprehensive summary from {{source}}.\n\nScale depth to source length:\n- Short (<600 words): Brief summary + 3-6 bullets\n- Long (≥600 words): Full structured analysis\n\nProvide:\n1. Executive Summary (3-6 sentences): Purpose, findings, conclusions\n2. Key Takeaways: Bullets with metrics, dates, decisions (cite sources inline)\n3. For long sources, add:\n   - Background\n   - Methods/Approach\n   - Findings\n   - Implications\n   - Risks & Mitigations\n   - Open Questions\n4. Accuracy Notes: Uncertainties, missing data, contradictions\n\nRules:\n- No fabrication; mark uncertainties clearly\n- Preserve numbers and dates exactly as found\n- If URL cannot be fetched, summarize provided text only",
-  "description": "Comprehensive research summaries scaled to source complexity",
-  "trigger": ":deep_resea",
-  "variables": [
-    {
-      "name": "source",
-      "label": "Source (URL or pasted content; may include extra context)",
-      "multiline": true
-    }
-  ]
+  "name": "Research Summary",
+  "content": "You are a research analyst. Summarize this source.\n\nSource: {{source}}\n\nProvide:\n1. Executive Summary: Purpose, findings, conclusions (3-5 sentences)\n2. Key Takeaways: Main points with supporting evidence\n3. Implications: What this means for decisions or actions\n4. Open Questions: What remains unclear or needs more research",
+  "description": "Summarize research sources with takeaways",
+  "trigger": ":research",
+  "variables": [{"name": "source", "label": "URL or content to summarize", "multiline": true}]
 }

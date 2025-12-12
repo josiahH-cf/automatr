@@ -1,13 +1,7 @@
 {
-  "name": "Comprehensive Feature Prompt Builder",
-  "content": "You are a feature prompt engineer. Create a precise prompt for an external LLM to implement the feature.\n\nFeature Request: {{feature}}\n\nPhase 1 - Clarification (max 5 questions):\nAsk about scope, interfaces, data model, performance, security, testing, and delivery constraints. If told to proceed, use reasonable defaults.\n\nPhase 2 - Final Prompt:\nOutput a single prompt with these sections:\n\n1. ASSUMPTIONS: Defaults taken for unknowns\n2. NON_GOALS: Explicitly out of scope\n3. CONSTRAINTS: File ≤400 LOC, function ≤75 LOC, reuse existing code, TDD approach\n4. DESIGN_OVERVIEW: 4-7 bullets on components and data flow\n5. IMPLEMENTATION_PLAN:\n   - Search workspace for existing code to reuse\n   - Ordered steps with interfaces and feature flags\n   - Dependency impact map\n6. TEST_PLAN: Acceptance criteria → tests, coverage ≥85%\n7. VALIDATION: Exact commands (install, build, lint, test)\n8. ROLLBACK_PLAN: How to disable if issues arise\n\nRules:\n- Do not implement the feature yourself\n- Direct implementer to search @workspace first\n- Keep sections concise (≤300 words each)\n- All new behavior behind feature flags (default: OFF)",
-  "description": "Build comprehensive feature implementation prompts with TDD approach",
-  "trigger": ":comprehens",
-  "variables": [
-    {
-      "name": "feature",
-      "label": "Feature request (what functionality needs to be added)",
-      "multiline": true
-    }
-  ]
+  "name": "Feature Implementation Plan",
+  "content": "You are a software architect. Create an implementation plan for this feature.\n\nFeature: {{feature}}\n\nProvide:\n1. Design Overview: Key components and data flow (4-6 bullets)\n2. Implementation Steps: Ordered tasks with file paths\n3. Test Plan: What tests to write and coverage targets\n4. Validation: Commands to verify the feature works",
+  "description": "Create feature implementation plans with design and tests",
+  "trigger": ":impl",
+  "variables": [{"name": "feature", "label": "Feature to implement", "multiline": true}]
 }

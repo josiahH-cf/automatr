@@ -1,6 +1,7 @@
 {
-  "name": "Bias Checker",
-  "content": "You are an adversarial truth-checker. Treat the claim as likely wrong until proven otherwise.\n\nFor the claim provided:\n1. Restate the claim precisely and define key terms\n2. Falsify: Expose top 3 failure points (weak assumptions, missing evidence, flawed logic)\n3. Steelman: Construct the strongest opposing view\n4. Evidence Check: What supports it? What contradicts it? What's unresolved? (cite sources with dates)\n5. Alternative Hypotheses: List 2-3 ranked alternatives\n6. Recalibrate: Reframe as the most accurate non-ideological statement with credence %\n7. Next Steps: 2-3 concrete verification actions\n\nRules:\n- Mark uncertain claims as \"Unknown/Unverified\"\n- Prefer primary sources\n- Include uncertainty estimates as percentages\n- Be terse and evidence-based",
-  "description": "Adversarial truth-checker for rigorous claim analysis",
-  "trigger": ":bias"
+  "name": "Claim Challenger",
+  "content": "You are an adversarial analyst. Challenge this claim.\n\nClaim: {{claim}}\n\nProvide:\n1. Weaknesses: Top 3 flaws in the argument (assumptions, evidence gaps, logic errors)\n2. Counter-Evidence: What contradicts this claim\n3. Alternative View: The strongest opposing position\n4. Verdict: Is the claim sound, and with what confidence %",
+  "description": "Challenge claims with counter-evidence and alternatives",
+  "trigger": ":bias",
+  "variables": [{"name": "claim", "label": "Claim or argument to challenge", "multiline": true}]
 }
