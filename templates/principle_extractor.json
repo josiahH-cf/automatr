@@ -1,12 +1,12 @@
 {
   "name": "Principle Extractor",
-  "content": "## Objective\nExtract clear, generalizable principles from {{text}} and show practical application.\n\n## Context\n- Role: distill enduring principles from messy narrative content.\n\n## Inputs\n- text: {{text}}\n\n## Assumptions\nAssumption: Prefer imperative, testable phrasing over platitudes.\n\n## Constraints\n- Each principle must include applicability, limits, and one example.\n- Avoid jargon; 1–2 sentence rule per principle.\n\n## Instructions\n1. Identify candidates — repeated patterns, causal links, decision rules.\n2. Normalize — convert to imperative, testable statements.\n3. Boundaries — note applicability contexts and failure modes.\n4. Application — provide one concrete example per principle.\n\n## Execution Flow\n1) Scan\n2) Normalize\n3) Boundaries\n4) Examples\n\n## Output Format\n- Principles: list of objects {title, rule, applicability, failure_modes, example}.\n- Summary: 3–5 sentence synthesis across principles.\n\n## Quality Checks\n- Rules are specific and testable.\n- Each has applicability and at least one failure mode.\n- Examples are concrete and plausible.\n\n## Eval Stubs\n- pass_if(count(principles) >= 3)\n- pass_if(all_have(['applicability','failure_modes','example']))",
-  "description": "This template extracts reusable principles from experiences or case studies to help you build mental models from specific situations. It identifies underlying patterns, codifies lessons learned, and suggests applications to future scenarios. Output: 3-5 principles with supporting evidence, applicability conditions, and anti-patterns to avoid. Use when debriefing projects, learning from failures, or building decision frameworks from experience.",
+  "content": "You are a principle extractor. Extract generalizable principles from {{text}}.\n\nFor each principle, provide:\n- Title: Short name\n- Rule: Imperative, testable statement (1-2 sentences)\n- Applicability: When this applies\n- Failure Modes: When it breaks down\n- Example: One concrete application\n\nThen provide a Summary (3-5 sentences) synthesizing across principles.\n\nRules:\n- Prefer imperative, testable phrasing over platitudes\n- Avoid jargon\n- Extract at least 3 principles",
+  "description": "Extract reusable principles from text with applicability and examples",
   "trigger": ":principle_",
   "variables": [
     {
       "name": "text",
-      "label": "Paste the source content (article, transcript, notes)",
+      "label": "Source content (article, transcript, notes)",
       "multiline": true
     }
   ]

@@ -1,12 +1,12 @@
 {
   "name": "Decision Framework From Book",
-  "content": "## Objective\nDesign a decision framework derived from the provided book context that is actionable and domain-adapted.\n\n## Context\n- Source: {{book_context}}\n- Decision type: {{decision_type}}\n\n## Inputs\n- book_context: {{book_context}}\n- decision_type: {{decision_type}}\n- constraints: {{constraints}}\n\n## Assumptions\nAssumption: When specifics are missing, infer conservative defaults and mark them.\nAssumption: No external browsing; rely only on provided excerpts/notes.\n\n## Constraints\n- Framework must be practical, brief, and free of fabrication.\n- Tie steps to cited concepts from the book context when possible.\n\n## Instructions\n- Extract core principles and translate them into a 5–7 step framework.\n- Define inputs, steps, and decision criteria tailored to {{decision_type}}.\n- Add safeguards: bias checks, reversibility, and monitoring hooks.\n\n## Execution Flow\n1) Summarize key principles.\n2) Draft step-by-step framework with inputs/outputs per step.\n3) Add safeguards and checkpoints.\n4) Provide example application.\n5) Run quality checks and refine.\n\n## Output Format\n1. Principles Summary — bullets citing the book context.\n2. Framework Steps — table: Step | Purpose | Inputs | Outputs | Checks.\n3. Example Application — short scenario in {{decision_type}}.\n4. Safeguards & Monitoring — bullets (biases, reversibility, metrics).\n\n## Quality Checks\n- Steps are concrete and minimal.\n- Book-derived principles are referenced.\n- Safeguards prevent common failure modes.\n- Example matches {{decision_type}} and constraints.\n\n## Eval Stubs\n- pass_if(steps_count >= 5 && steps_count <= 7)\n- pass_if(has_safeguards == true)\n- pass_if(has_example == true)",
-  "description": "This template extracts decision frameworks from books or texts to help you apply structured thinking models to your decisions. It identifies decision principles, application patterns, and mental models from source material. Output: codified framework with principles, when to apply, example applications, and pitfalls. Use when learning decision methodologies, applying book wisdom to real situations, or building decision systems.",
+  "content": "You are a decision framework architect. Design an actionable framework derived from {{book_context}} for {{decision_type}} decisions.\n\nProvide:\n1. Principles Summary: Key principles from the book (cite sources)\n2. Framework Steps (table, 5-7 steps): Step | Purpose | Inputs | Outputs | Checks\n3. Example Application: Short scenario applying the framework to {{decision_type}}\n4. Safeguards: Bias checks, reversibility triggers, monitoring hooks\n\nConstraints:\n{{constraints}}\n\nRules:\n- No fabrication; mark inferences\n- Tie steps to cited book concepts",
+  "description": "Extract decision frameworks from books with practical application",
   "trigger": ":decision_frame",
   "variables": [
     {
       "name": "book_context",
-      "label": "Book/title and brief excerpt or notes to base the framework on",
+      "label": "Book title and excerpt/notes to base the framework on",
       "multiline": true
     },
     {
