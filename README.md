@@ -64,6 +64,40 @@ Templates sync to [Espanso](https://espanso.org) for system-wide text expansion.
 └── templates/
 ```
 
+## Privacy
+
+Automatr runs **completely locally**. Your prompts and responses never leave your machine.
+
+- **No cloud APIs** — all inference runs via llama.cpp on your hardware
+- **No telemetry** — no analytics, tracking, or phone-home
+- **No account required** — no sign-up, no API keys
+
+### Data Storage
+
+All data is stored locally:
+
+| Location (Linux/WSL) | Purpose |
+|----------------------|---------|
+| `~/.config/automatr/config.json` | App settings (model path, port, theme) |
+| `~/.config/automatr/templates/` | Your prompt templates |
+| `~/.local/share/automatr/` | llama.cpp binary and build files |
+| `~/models/` | Downloaded model files (.gguf) |
+
+| Location (macOS) | Purpose |
+|------------------|---------|
+| `~/Library/Application Support/automatr/` | Config, templates, llama.cpp |
+| `~/models/` | Downloaded model files (.gguf) |
+
+### Clear All Data
+
+```bash
+# Linux/WSL
+rm -rf ~/.config/automatr/ ~/.local/share/automatr/ ~/models/*.gguf
+
+# macOS
+rm -rf ~/Library/Application\ Support/automatr/ ~/models/*.gguf
+```
+
 ## License
 
 MIT

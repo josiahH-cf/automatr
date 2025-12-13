@@ -37,3 +37,13 @@ Thumbs.db
 
 # Project specific
 *.log
+
+# Model files (large, shouldn't be committed)
+*.gguf
+*.ggml
+*.bin
+models/
+
+# Local configuration overrides
+config.local.json
+*.local.json
