@@ -59,6 +59,36 @@ class GenerationWorker(QThread):
             or "connection error" in error_str
         )
     
+    def _extract_template_content(self, text: str) -> str:
+        """Extract template content from LLM response.
+        
+        Looks for content within <generated_template> tags first,
+        falls back to full text with markdown cleanup.
+        
+        Args:
+            text: Raw LLM response text.
+            
+        Returns:
+            Extracted template content.
+        """
+        import re
+        
+        # Try to extract from <generated_template> tags
+        match = re.search(r"<generated_template>(.*?)</generated_template>", text, re.DOTALL)
+        if match:
+            return match.group(1).strip()
+        
+        # Fallback: clean up markdown and return
+        result = text.strip()
+        if result.startswith("```"):
+            lines = result.split("\n")
+            lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            result = "\n".join(lines)
+        
+        return result
+    
     def run(self):
         import time
         client = get_llm_client()
@@ -70,14 +100,8 @@ class GenerationWorker(QThread):
             
             try:
                 result = client.generate(self.prompt)
-                # Clean up result - remove any markdown code blocks if present
-                result = result.strip()
-                if result.startswith("```"):
-                    lines = result.split("\n")
-                    lines = lines[1:]
-                    if lines and lines[-1].strip() == "```":
-                        lines = lines[:-1]
-                    result = "\n".join(lines)
+                # Extract template content from response
+                result = self._extract_template_content(result)
                 self.finished.emit(result)
                 return
                 
@@ -415,7 +439,7 @@ class GenerationPromptEditor(QDialog):
         self._setup_ui()
     
     def _setup_ui(self):
-        from automatr.core.config import load_generation_prompt, DEFAULT_GENERATION_PROMPT
+        from automatr.core.templates import load_meta_template, get_bundled_meta_template_content
         
         layout = QVBoxLayout(self)
         
@@ -430,7 +454,8 @@ class GenerationPromptEditor(QDialog):
         
         # Text editor
         self.prompt_edit = QPlainTextEdit()
-        self.prompt_edit.setPlainText(load_generation_prompt())
+        template = load_meta_template("template_generator")
+        self.prompt_edit.setPlainText(template.content if template else "")
         self.prompt_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         layout.addWidget(self.prompt_edit)
         
@@ -446,7 +471,8 @@ class GenerationPromptEditor(QDialog):
         reset_btn = QPushButton("Reset to Default")
         reset_btn.setObjectName("secondary")
         reset_btn.setToolTip("Restore the default generation instructions")
-        reset_btn.clicked.connect(lambda: self.prompt_edit.setPlainText(DEFAULT_GENERATION_PROMPT))
+        default_content = get_bundled_meta_template_content("template_generator") or ""
+        reset_btn.clicked.connect(lambda: self.prompt_edit.setPlainText(default_content))
         button_layout.addWidget(reset_btn)
         
         button_layout.addStretch()
@@ -464,7 +490,7 @@ class GenerationPromptEditor(QDialog):
     
     def _save(self):
         """Save the prompt and close dialog."""
-        from automatr.core.config import save_generation_prompt
+        from automatr.core.templates import save_meta_template
         
         prompt = self.prompt_edit.toPlainText()
         
@@ -483,7 +509,7 @@ class GenerationPromptEditor(QDialog):
             if reply != QMessageBox.StandardButton.Yes:
                 return
         
-        if save_generation_prompt(prompt):
+        if save_meta_template("template_generator", prompt):
             self.accept()
         else:
             QMessageBox.critical(self, "Error", "Failed to save prompt")
@@ -502,7 +528,7 @@ class ImprovementPromptEditor(QDialog):
         self._setup_ui()
     
     def _setup_ui(self):
-        from automatr.core.config import load_improvement_prompt, DEFAULT_IMPROVEMENT_PROMPT
+        from automatr.core.templates import load_meta_template, get_bundled_meta_template_content
         
         layout = QVBoxLayout(self)
         
@@ -517,7 +543,8 @@ class ImprovementPromptEditor(QDialog):
         
         # Text editor
         self.prompt_edit = QPlainTextEdit()
-        self.prompt_edit.setPlainText(load_improvement_prompt())
+        template = load_meta_template("template_improver")
+        self.prompt_edit.setPlainText(template.content if template else "")
         self.prompt_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         layout.addWidget(self.prompt_edit)
         
@@ -533,7 +560,8 @@ class ImprovementPromptEditor(QDialog):
         reset_btn = QPushButton("Reset to Default")
         reset_btn.setObjectName("secondary")
         reset_btn.setToolTip("Restore the default improvement instructions")
-        reset_btn.clicked.connect(lambda: self.prompt_edit.setPlainText(DEFAULT_IMPROVEMENT_PROMPT))
+        default_content = get_bundled_meta_template_content("template_improver") or ""
+        reset_btn.clicked.connect(lambda: self.prompt_edit.setPlainText(default_content))
         button_layout.addWidget(reset_btn)
         
         button_layout.addStretch()
@@ -551,7 +579,7 @@ class ImprovementPromptEditor(QDialog):
     
     def _save(self):
         """Save the prompt and close dialog."""
-        from automatr.core.config import save_improvement_prompt
+        from automatr.core.templates import save_meta_template
         
         prompt = self.prompt_edit.toPlainText()
         
@@ -570,7 +598,7 @@ class ImprovementPromptEditor(QDialog):
             if reply != QMessageBox.StandardButton.Yes:
                 return
         
-        if save_improvement_prompt(prompt):
+        if save_meta_template("template_improver", prompt):
             self.accept()
         else:
             QMessageBox.critical(self, "Error", "Failed to save prompt")

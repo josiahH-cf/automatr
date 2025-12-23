@@ -89,7 +89,7 @@ public:
     void paste();
     void deselect();
     void insert(const QString &);
-    QMenu *createStandardContextMenu() /Factory/;
+    QMenu *createStandardContextMenu() /Transfer/;
 
 signals:
     void textChanged(const QString &);

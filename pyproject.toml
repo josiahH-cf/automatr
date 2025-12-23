@@ -4,19 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "automatr"
-version = "0.1.0"
-description = "Minimal prompt automation tool with local LLM integration"
+version = "1.0.0"
+description = "Prompt templates + local LLM in one GUI. No cloud, no API keys."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
     {name = "Automatr Contributors"}
 ]
-keywords = ["automation", "prompts", "llm", "espanso"]
+keywords = ["llm", "prompt", "automation", "local", "llama.cpp", "espanso"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: X11 Applications :: Qt",
-    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS :: MacOS X",

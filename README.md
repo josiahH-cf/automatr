@@ -1,103 +1,141 @@
-# Automatr
+# 🤖 Automatr
 
-Prompt templates + local LLM in one GUI. No cloud, no API keys.
+**Create reusable AI prompts that run 100% on your computer.**
 
-## Install & Run
+No cloud. No API keys. No subscriptions. Just you and your local AI.
+
+![Automatr Screenshot](docs/screenshot.png)
+<!-- TODO: Add screenshot showing the main window with a template -->
+
+---
+
+## ✨ What is Automatr?
+
+Automatr helps you build **prompt templates** — reusable prompts with fill-in-the-blank variables. Think of them like form letters for AI.
+
+**Example:** Instead of retyping "Review this code for bugs..." every time, create a template once and reuse it forever.
+
+### 🔒 Your Data Stays Private
+
+Everything runs on your computer:
+- ✅ No internet connection required (after setup)
+- ✅ No accounts or sign-ups
+- ✅ Your prompts never leave your machine
+
+---
+
+## 🚀 Getting Started
+
+### Step 1: Install
+
+Open a terminal and run:
 
 ```bash
-./install.sh    # builds llama.cpp, sets up Python venv
-automatr        # launch GUI
+git clone https://github.com/josiahH-cf/automatr.git
+cd automatr
+./install.sh
 ```
 
-**Requirements:** 
-- Linux, WSL2, or macOS
-- Python 3.10+
-- A `.gguf` model in `~/models/`
-- **macOS only:** [Homebrew](https://brew.sh) (`/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`)
+This takes 5-10 minutes. It downloads and sets up everything automatically.
 
-## Get a Local Model
+### Step 2: Get an AI Model
 
-Automatr uses local models so everything runs on your machine—no internet, API keys, or subscriptions.
+You need a `.gguf` model file — this is the "brain" that generates responses.
 
-1. In the app, go to **LLM → Download Models (Hugging Face)** to browse models
-   - Look for `.gguf` files (optimized for llama.cpp)
-   - Start with smaller models (3-8B parameters) for faster performance
+1. Launch Automatr: `automatr`
+2. Go to **LLM → Download Models (Hugging Face)**
+3. Download any model (start small, around 3-8GB)
+4. Go to **LLM → Select Model → Add Model from File...**
+5. Pick your downloaded `.gguf` file
 
-2. After downloading, go to **LLM → Select Model → Add Model from File...** and select your `.gguf` file
+**💡 Tip:** Smaller models run faster. Larger ones are smarter but slower.
 
-The model is copied to `~/models/` and ready to use.
+### Step 3: Create Your First Template
 
-## Windows Hotkey (WSL2)
+1. Click **New Template**
+2. Give it a name like "Code Review"
+3. Write your prompt using `{{variables}}` for the blanks:
+   ```
+   Review this {{language}} code for bugs and improvements:
+   
+   {{code}}
+   ```
+4. Click **Save**
 
-Press **Ctrl+Shift+J** anywhere in Windows to launch Automatr.
+Now you can reuse this template anytime — just fill in the blanks!
 
-The installer automatically:
-- Creates an AutoHotkey script in `Documents/AutoHotkey/automatr.ahk`
-- Adds it to Windows Startup so it runs on boot
+---
 
-**Requires:** [AutoHotkey v1.1](https://www.autohotkey.com/download/ahk-install.exe) (free, ~3MB)
+## 🪟 Windows Hotkey (WSL2)
 
-If AutoHotkey is already installed, just double-click `automatr.ahk` to enable the hotkey.
+Press **Ctrl+Shift+J** anywhere in Windows to launch Automatr instantly.
 
-## What It Does
+The installer sets this up automatically. Requires [AutoHotkey v1.1](https://www.autohotkey.com/download/ahk-install.exe) (free, ~3MB).
 
-1. **Pick a template** — reusable prompts with `{{variables}}`
-2. **Fill in the blanks** — GUI form for each variable
-3. **Generate** — local llama.cpp server, GPU-accelerated
-4. **Copy result** — paste anywhere
+---
 
-Templates sync to [Espanso](https://espanso.org) for system-wide text expansion.
+## 💻 System Requirements
 
-## Files
+| Requirement | Minimum |
+|-------------|---------|
+| **OS** | Linux, macOS, or Windows (via WSL2) |
+| **Python** | 3.10 or newer |
+| **RAM** | 8GB (16GB recommended) |
+| **Storage** | 10GB free for models |
 
-**Linux/WSL:**
-```
-~/.config/automatr/
-├── config.json      # model path, port, theme
-└── templates/       # your prompt templates (JSON)
-```
+---
+
+## 🗂️ Where Files Are Stored
+
+**Linux / WSL2:**
+| What | Location |
+|------|----------|
+| Settings & Templates | `~/.config/automatr/` |
+| LLM Server | `~/.local/share/automatr/` |
+| Models | `~/models/` |
 
 **macOS:**
-```
-~/Library/Application Support/automatr/
-├── config.json
-└── templates/
-```
+| What | Location |
+|------|----------|
+| Settings & Templates | `~/Library/Application Support/automatr/` |
+| Models | `~/models/` |
 
-## Privacy
-
-Automatr runs **completely locally**. Your prompts and responses never leave your machine.
-
-- **No cloud APIs** — all inference runs via llama.cpp on your hardware
-- **No telemetry** — no analytics, tracking, or phone-home
-- **No account required** — no sign-up, no API keys
-
-### Data Storage
-
-All data is stored locally:
-
-| Location (Linux/WSL) | Purpose |
-|----------------------|---------|
-| `~/.config/automatr/config.json` | App settings (model path, port, theme) |
-| `~/.config/automatr/templates/` | Your prompt templates |
-| `~/.local/share/automatr/` | llama.cpp binary and build files |
-| `~/models/` | Downloaded model files (.gguf) |
-
-| Location (macOS) | Purpose |
-|------------------|---------|
-| `~/Library/Application Support/automatr/` | Config, templates, llama.cpp |
-| `~/models/` | Downloaded model files (.gguf) |
-
-### Clear All Data
-
+**To remove everything:**
 ```bash
-# Linux/WSL
+# Linux/WSL2
 rm -rf ~/.config/automatr/ ~/.local/share/automatr/ ~/models/*.gguf
 
-# macOS
+# macOS  
 rm -rf ~/Library/Application\ Support/automatr/ ~/models/*.gguf
 ```
 
-## License
+---
 
-MIT
+## ❓ Common Questions
+
+**Q: Do I need internet?**  
+A: Only to download the app and a model. After that, everything works offline.
+
+**Q: Is it free?**  
+A: Yes, completely free and open source (MIT license).
+
+**Q: What models work?**  
+A: Any `.gguf` format model. Browse [Hugging Face](https://huggingface.co/models?search=gguf) for options.
+
+**Q: It's slow. What can I do?**  
+A: Use a smaller model, or upgrade your hardware. A GPU helps significantly.
+
+**Q: What's Espanso?**  
+A: An optional text expander. Automatr can sync templates to [Espanso](https://espanso.org) for system-wide shortcuts.
+
+---
+
+## 📄 License
+
+MIT — use it however you want.
+
+---
+
+<p align="center">
+  Made with ❤️ for people who value privacy
+</p>

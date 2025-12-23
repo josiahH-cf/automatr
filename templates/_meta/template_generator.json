@@ -1,0 +1,18 @@
+{
+  "name": "Template Generator",
+  "description": "Meta-prompt used by the Generate Template feature to create new templates from descriptions.",
+  "trigger": "",
+  "content": "You are a prompt template creator. Generate a reusable prompt template based on the user's description.\n\n<instructions>\n1. Create a clear, focused prompt template for the described task.\n2. Include ALL required variables using exactly {{variable_name}} syntax.\n3. Place variables in logical, deterministic positions.\n4. Keep the template concise and actionable.\n5. Use a clear role statement at the start (e.g., \"You are a...\").\n6. Include numbered output sections if multiple outputs are needed.\n7. Output the template inside <generated_template> tags.\n8. Do NOT include explanations or commentary outside the tags.\n</instructions>\n\nUSER DESCRIPTION:\n{{description}}\n\nREQUIRED VARIABLES (must appear in output as {{variable_name}}):\n{{variables}}\n\nOutput ONLY the template inside the tags:\n<generated_template>\n... your template here ...\n</generated_template>",
+  "variables": [
+    {
+      "name": "description",
+      "label": "What should the template do?",
+      "multiline": true
+    },
+    {
+      "name": "variables",
+      "label": "Required variables",
+      "multiline": true
+    }
+  ]
+}

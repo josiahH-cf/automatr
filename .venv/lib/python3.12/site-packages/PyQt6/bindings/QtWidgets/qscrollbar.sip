@@ -46,6 +46,6 @@ protected:
 
 public:
 %If (Qt_6_10_0 -)
-    QMenu *createStandardContextMenu(QPoint position) /Factory/;
+    QMenu *createStandardContextMenu(QPoint position) /Transfer/;
 %End
 };

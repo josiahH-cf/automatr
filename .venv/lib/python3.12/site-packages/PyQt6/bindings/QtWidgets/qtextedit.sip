@@ -93,8 +93,8 @@ public:
     void append(const QString &text);
     void ensureCursorVisible();
     virtual QVariant loadResource(int type, const QUrl &name);
-    QMenu *createStandardContextMenu() /Factory/;
-    QMenu *createStandardContextMenu(const QPoint &position) /Factory/;
+    QMenu *createStandardContextMenu() /Transfer/;
+    QMenu *createStandardContextMenu(const QPoint &position) /Transfer/;
     QTextCursor cursorForPosition(const QPoint &pos) const;
     QRect cursorRect(const QTextCursor &cursor) const;
     QRect cursorRect() const;
@@ -171,7 +171,7 @@ protected:
     virtual void showEvent(QShowEvent *);
     virtual void changeEvent(QEvent *e);
     virtual void wheelEvent(QWheelEvent *e);
-    virtual QMimeData *createMimeDataFromSelection() const /Factory/;
+    virtual QMimeData *createMimeDataFromSelection() const /Transfer/;
     virtual bool canInsertFromMimeData(const QMimeData *source) const;
     virtual void insertFromMimeData(const QMimeData *source);
     virtual void inputMethodEvent(QInputMethodEvent *);

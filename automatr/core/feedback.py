@@ -143,10 +143,9 @@ def get_feedback_manager() -> FeedbackManager:
 
 
 def build_improvement_prompt(template_content: str, refinements: List[str], additional_notes: str = "") -> str:
-    """Build a prompt asking the LLM to improve a template based on user's custom prompt template.
+    """Build a prompt asking the LLM to improve a template using the meta-template.
     
-    Loads the improvement prompt template from the config directory and replaces
-    placeholders with actual values.
+    Loads the template_improver meta-template and renders it with the provided values.
     
     Args:
         template_content: The current template content.
@@ -156,37 +155,37 @@ def build_improvement_prompt(template_content: str, refinements: List[str], addi
     Returns:
         A prompt string for the LLM.
     """
-    from automatr.core.config import load_improvement_prompt
+    from automatr.core.templates import load_meta_template
     
-    # Load custom prompt template (or default)
-    prompt_template = load_improvement_prompt()
+    # Load the meta-template
+    meta_template = load_meta_template("template_improver")
+    if not meta_template:
+        # Fallback: return a basic prompt if meta-template is missing
+        return f"Improve this template based on feedback:\n\n{template_content}\n\nFeedback: {refinements}"
     
-    # Build refinements section
+    # Build refinements section (just the content, tags are in the template)
     refinements_text = ""
     if refinements:
-        refinements_lines = ["USER FEEDBACK TO ADDRESS:"]
-        for i, ref in enumerate(refinements, 1):
-            refinements_lines.append(f"{i}. {ref}")
-        refinements_text = "\n".join(refinements_lines)
+        refinements_text = "\n".join(f"- {ref}" for ref in refinements)
     
     # Build additional notes section
     notes_text = ""
     if additional_notes:
-        notes_text = f"ADDITIONAL NOTES:\n{additional_notes}"
+        notes_text = f"<additional_context>\n{additional_notes}\n</additional_context>"
     
-    # Replace placeholders in the template
-    prompt = prompt_template.replace("{{template_content}}", template_content)
-    prompt = prompt.replace("{{refinements}}", refinements_text)
-    prompt = prompt.replace("{{additional_notes}}", notes_text)
-    
-    return prompt
+    # Manual substitution to preserve {{variables}} in template_content
+    # (Template.render() strips unreplaced {{}} placeholders, which we don't want)
+    result = meta_template.content
+    result = result.replace("{{template_content}}", template_content)
+    result = result.replace("{{refinements}}", refinements_text)
+    result = result.replace("{{additional_notes}}", notes_text)
+    return result
 
 
 def build_generation_prompt(description: str, expected_variables: List[str]) -> str:
-    """Build a prompt asking the LLM to generate a new template.
+    """Build a prompt asking the LLM to generate a new template using the meta-template.
     
-    Loads the generation prompt template from the config directory and replaces
-    placeholders with actual values.
+    Loads the template_generator meta-template and renders it with the provided values.
     
     Args:
         description: User's description of what the template should do.
@@ -195,10 +194,13 @@ def build_generation_prompt(description: str, expected_variables: List[str]) -> 
     Returns:
         A prompt string for the LLM.
     """
-    from automatr.core.config import load_generation_prompt
+    from automatr.core.templates import load_meta_template
     
-    # Load custom prompt template (or default)
-    prompt_template = load_generation_prompt()
+    # Load the meta-template
+    meta_template = load_meta_template("template_generator")
+    if not meta_template:
+        # Fallback: return a basic prompt if meta-template is missing
+        return f"Create a prompt template for: {description}\n\nVariables: {expected_variables}"
     
     # Build variables section
     variables_text = ""
@@ -210,8 +212,8 @@ def build_generation_prompt(description: str, expected_variables: List[str]) -> 
     else:
         variables_text = "(No specific variables required - use appropriate placeholders)"
     
-    # Replace placeholders in the template
-    prompt = prompt_template.replace("{{description}}", description)
-    prompt = prompt.replace("{{variables}}", variables_text)
-    
-    return prompt
+    # Render the meta-template with values
+    return meta_template.render({
+        "description": description,
+        "variables": variables_text,
+    })

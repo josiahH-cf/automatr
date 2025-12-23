@@ -67,8 +67,8 @@ public:
     QString toPlainText() const;
     void ensureCursorVisible();
     virtual QVariant loadResource(int type, const QUrl &name);
-    QMenu *createStandardContextMenu() /Factory/;
-    QMenu *createStandardContextMenu(const QPoint &position) /Factory/;
+    QMenu *createStandardContextMenu() /Transfer/;
+    QMenu *createStandardContextMenu(const QPoint &position) /Transfer/;
     QTextCursor cursorForPosition(const QPoint &pos) const;
     QRect cursorRect(const QTextCursor &cursor) const;
     QRect cursorRect() const;
@@ -138,7 +138,7 @@ public:
     virtual QVariant inputMethodQuery(Qt::InputMethodQuery property) const;
 
 protected:
-    virtual QMimeData *createMimeDataFromSelection() const /Factory/;
+    virtual QMimeData *createMimeDataFromSelection() const /Transfer/;
     virtual bool canInsertFromMimeData(const QMimeData *source) const;
     virtual void insertFromMimeData(const QMimeData *source);
     virtual void scrollContentsBy(int dx, int dy);
