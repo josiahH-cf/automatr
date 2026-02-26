@@ -1,4 +1,31 @@
-# 🤖 Automatr
+# ⚠️ This Repository Has Been Archived
+
+> **This project has been split into two independent applications. No further updates will be made here.**
+
+| New Repository | Description |
+|---|---|
+| [**automatr-prompt**](https://github.com/josiahH-cf/automatr-prompt) | Local prompt optimizer with reusable templates and llama.cpp integration |
+| [**automatr-espanso**](https://github.com/josiahH-cf/automatr-espanso) | Espanso automation GUI with template-to-trigger sync |
+
+## Migration
+
+```bash
+# For the prompt optimizer:
+git clone https://github.com/josiahH-cf/automatr-prompt.git
+cd automatr-prompt
+./install.sh
+
+# For the Espanso manager:
+git clone https://github.com/josiahH-cf/automatr-espanso.git
+cd automatr-espanso
+./install.sh
+```
+
+Your existing templates in `~/.config/automatr/` are compatible with both apps.
+
+---
+
+# 🤖 Automatr (Historical)
 
 **Create reusable AI prompts that run 100% on your computer.**
 
